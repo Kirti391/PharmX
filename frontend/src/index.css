@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/* PharmX design tokens — palette supplied by the user (sage/navy/taupe), wired
+   into Tailwind v4's CSS-first theming. Every bg-*, text-*, border-* utility
+   below is auto-generated from these custom properties. */
+@theme {
+  --color-navy: #112D32;      /* darkest — page background, sidebar, hero */
+  --color-tealdeep: #254E58;  /* panels/cards on dark backgrounds */
+  --color-sage: #88BDBC;      /* primary accent — buttons, links, active states */
+  --color-taupedark: #4F4A41; /* muted text on light backgrounds, borders */
+  --color-taupe: #6E6658;     /* secondary text, dividers */
+
+  --font-display: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+  --font-body: "Inter", "Segoe UI", sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: #F4F1EC; /* warm off-white, sits well against the taupe/sage palette */
+  color: var(--color-navy);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(17, 45, 50, 0.2); border-radius: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
