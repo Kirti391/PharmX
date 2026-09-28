@@ -10,7 +10,7 @@ const env = require("../../config/env");
 const { ApiError } = require("../../common/http");
 const { signAccessToken, signRefreshToken, hashToken } = require("../../common/tokens");
 const { recordAudit } = require("../../common/audit");
-
+const DoctorProfile = require("../../models/DoctorProfile");
 const REFRESH_TTL_MS = env.refreshTokenTtlDays * 24 * 60 * 60 * 1000;
 
 function publicUser(user) {
@@ -27,18 +27,61 @@ function publicUser(user) {
 
 /** Creates the minimal role-specific profile document that signup requires. */
 async function createInitialProfile(userId, role, displayName, location) {
-  if (role === "MR" || role === "INDEPENDENT_MR") {
-    await MRProfile.create({ userId, fullName: displayName, isIndependent: role === "INDEPENDENT_MR" });
+  if (role === "MR") {
+    await MRProfile.create({
+      userId,
+      fullName: displayName,
+      isIndependent: false,
+    });
   } else if (role === "PHARMA_COMPANY") {
-    await PharmaCompanyProfile.create({ userId, companyName: displayName });
+    await PharmaCompanyProfile.create({
+      userId,
+      companyName: displayName,
+    });
   } else if (role === "PHARMACY") {
-    if (!location) throw new ApiError(400, "VALIDATION_ERROR", "Pharmacy signup requires a location");
-    await PharmacyProfile.create({ userId, pharmacyName: displayName, location });
-  } else if (role === "STOCKIST" || role === "DISTRIBUTOR") {
-    await StockistProfile.create({ userId, companyName: displayName, type: role });
+    if (!location) {
+      throw new ApiError(
+        400,
+        "VALIDATION_ERROR",
+        "Pharmacy signup requires a location"
+      );
+    }
+
+    await PharmacyProfile.create({
+      userId,
+      pharmacyName: displayName,
+      location,
+    });
+  } else if (role === "DISTRIBUTOR_STOCKIST") {
+    if (!location) {
+      throw new ApiError(
+        400,
+        "VALIDATION_ERROR",
+        "Distributor / Stockist signup requires a location"
+      );
+    }
+
+    await StockistProfile.create({
+      userId,
+      companyName: displayName,
+      type: "STOCKIST",
+    });
+  } else if (role === "DOCTOR") {
+    if (!location) {
+      throw new ApiError(
+        400,
+        "VALIDATION_ERROR",
+        "Doctor signup requires a location"
+      );
+    }
+
+    await DoctorProfile.create({
+      userId,
+      fullName: displayName,
+      location,
+    });
   }
 }
-
 async function issueTokenPair(user) {
   const accessToken = signAccessToken(user._id, user.role);
   const refreshToken = signRefreshToken(user._id);

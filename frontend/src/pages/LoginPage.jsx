@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
 import { http, apiErrorMessage } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
-import { Button } from "../components/ui";
-import { Input, Label } from "../components/ui";
-import { Pill } from "lucide-react";
+import { Button, Input, Label } from "../components/ui";
+
+import logo from "../assets/pharmunis logo.png";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -18,10 +20,27 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
     try {
-      const result = await http.post("/auth/login", { email, password });
-      setSession(result.user, result.tokens.accessToken, result.tokens.refreshToken);
-      navigate(result.user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard");
+      const result = await http.post("/auth/login", {
+        email,
+        password,
+      });
+
+      setSession(
+        result.user,
+        result.tokens.accessToken,
+        result.tokens.refreshToken
+      );
+
+      // Login works for every role.
+      // Admins have a separate dashboard;
+      // all other authenticated roles use the main dashboard.
+      navigate(
+        result.user.role === "ADMIN"
+          ? "/admin/dashboard"
+          : "/dashboard"
+      );
     } catch (err) {
       setError(apiErrorMessage(err, "Invalid email or password"));
     } finally {
@@ -30,54 +49,150 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-navy flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg bg-sage flex items-center justify-center">
-              <Pill className="text-navy" size={20} />
-            </div>
-            <span className="font-display font-bold text-xl text-white">PharmX</span>
+    <main className="min-h-screen bg-[#F7F5FA] flex items-center justify-center px-5 py-10">
+
+      <div className="w-full max-w-[400px]">
+
+        {/* Logo */}
+        <div className="flex justify-center mb-11">
+          <Link to="/">
+            <img
+              src={logo}
+              alt="PharmUnis"
+              className="w-[95px] h-auto"
+            />
           </Link>
         </div>
-        <div className="rounded-xl p-8 bg-white/5 border border-white/10">
-          <h1 className="font-display text-xl font-semibold text-white mb-1">Welcome back</h1>
-          <p className="text-white/60 text-sm mb-6">Log in to your PharmX dashboard.</p>
 
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <Label className="text-white/80">Email</Label>
-              <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
-            </div>
-            <div>
-              <Label className="text-white/80">Password</Label>
-              <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-            </div>
-            {error && <p className="text-red-400 text-sm">{error}</p>}
-            <Button type="submit" className="w-full" loading={loading}>
-              Log in
-            </Button>
-          </form>
+        {/* Heading */}
+        <div className="text-center mb-9">
+          <p
+            className="text-[#D83F87] text-[11px] uppercase tracking-[0.28em] mb-3"
+            style={{ fontFamily: "Fauna One" }}
+          >
+            Welcome back
+          </p>
 
-          <div className="mt-6 text-center text-sm text-white/60">
-            New to PharmX?{" "}
-            <Link to="/signup" className="text-sage font-medium">
+          <h1
+            className="text-[#2A1B3D] text-[36px] leading-tight"
+            style={{ fontFamily: "Cinzel" }}
+          >
+            Sign in
+          </h1>
+
+          <p
+            className="mt-3 text-[#A4B3B6] text-sm"
+            style={{ fontFamily: "Fauna One" }}
+          >
+            Access your professional workspace
+          </p>
+        </div>
+
+        {/* Login form */}
+        <form onSubmit={onSubmit} className="space-y-6">
+
+          {/* Email */}
+          <Label
+  htmlFor="login-email"
+  className="text-[#2A1B3D] text-sm"
+  style={{ fontFamily: "Philosopher" }}
+>
+  Email
+</Label>
+
+<Input
+  id="login-email"
+  name="email"
+  type="email"
+  required
+  autoComplete="email"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  placeholder="you@company.com"
+  className="mt-2 h-12 rounded-xl border-[#A4B3B6]/50 bg-white text-[#2A1B3D] placeholder:text-[#A4B3B6] shadow-none focus:border-[#D83F87] focus:ring-1 focus:ring-[#D83F87]/20"
+/>
+          {/* Password */}
+         <Label
+  htmlFor="login-password"
+  className="text-[#2A1B3D] text-sm"
+  style={{ fontFamily: "Philosopher" }}
+>
+  Password
+</Label>
+
+<Input
+  id="login-password"
+  name="password"
+  type="password"
+  required
+  autoComplete="current-password"
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  placeholder="••••••••"
+  className="mt-2 h-12 rounded-xl border-[#A4B3B6]/50 bg-white text-[#2A1B3D] placeholder:text-[#A4B3B6] shadow-none focus:border-[#D83F87] focus:ring-1 focus:ring-[#D83F87]/20"
+/>
+
+          {/* Error */}
+          {error && (
+            <div className="rounded-xl bg-[#D83F87]/8 border border-[#D83F87]/20 px-4 py-3">
+              <p className="text-sm text-[#D83F87]">
+                {error}
+              </p>
+            </div>
+          )}
+
+          {/* Submit */}
+          <Button
+            type="submit"
+            loading={loading}
+            className="
+              w-full
+              h-12
+              rounded-xl
+              bg-[#2A1B3D]
+              hover:bg-[#44318D]
+              text-white
+              border-0
+              shadow-none
+              transition-colors
+              duration-200
+            "
+          >
+            <span style={{ fontFamily: "Philosopher" }}>
+              Sign in
+            </span>
+          </Button>
+        </form>
+
+        {/* Signup */}
+        <div className="text-center mt-8">
+          <p
+            className="text-sm text-[#A4B3B6]"
+            style={{ fontFamily: "Fauna One" }}
+          >
+            New to PharmUnis?{" "}
+            <Link
+              to="/signup"
+              className="
+                text-[#D83F87]
+                hover:text-[#44318D]
+                transition-colors
+              "
+            >
               Create an account
             </Link>
-          </div>
-          <div className="mt-3 text-center">
-            <Link to="/forgot-password" className="text-xs text-white/40 hover:text-white/60">
-              Forgot password?
-            </Link>
-          </div>
+          </p>
         </div>
 
-        <div className="mt-6 rounded-xl p-4 bg-white/5 border border-white/10 text-xs text-white/50">
-          <p className="font-medium text-white/70 mb-1">Demo accounts (password: Password123!)</p>
-          <p>company1@pharmx.dev · mr1@pharmx.dev · pharmacy1@pharmx.dev</p>
-          <p>stockist1@pharmx.dev · admin@pharmx.dev</p>
+        {/* Minimal palette detail */}
+        <div className="flex justify-center items-center gap-1.5 mt-10">
+          <span className="w-5 h-[2px] bg-[#D83F87]" />
+          <span className="w-5 h-[2px] bg-[#44318D]" />
+          <span className="w-5 h-[2px] bg-[#E98074]" />
+          <span className="w-5 h-[2px] bg-[#A4B3B6]" />
         </div>
+
       </div>
-    </div>
+    </main>
   );
 }

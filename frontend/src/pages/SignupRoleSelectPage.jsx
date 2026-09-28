@@ -1,47 +1,256 @@
 import { Link } from "react-router-dom";
-import { Building2, Users, UserCheck, Store, Truck, Boxes, Pill } from "lucide-react";
+import logo from "../assets/pharmunis logo.png";
 
 const ROLES = [
-  { role: "pharma-company", label: "Pharma Company", desc: "Manufacture and distribute pharmaceutical products.", icon: Building2 },
-  { role: "mr", label: "Medical Representative", desc: "Represent one or more pharma companies in the field.", icon: Users },
-  { role: "independent-mr", label: "Independent / Freelance MR", desc: "Work flexibly across companies and territories.", icon: UserCheck },
-  { role: "pharmacy", label: "Pharmacy / Chemist", desc: "Run a pharmacy and want better supplier connections.", icon: Store },
-  { role: "stockist", label: "Stockist", desc: "Stock and supply pharmaceutical products regionally.", icon: Boxes },
-  { role: "distributor", label: "Distributor", desc: "Distribute pharmaceutical products across territories.", icon: Truck },
+  {
+    slug: "pharma-company",
+    number: "01",
+    title: "Pharmaceutical Company",
+  },
+  {
+    slug: "mr",
+    number: "02",
+    title: "Medical Representatives / Executives",
+  },
+  {
+    slug: "pharmacy",
+    number: "03",
+    title: "Pharmacy / Chemist",
+  },
+  {
+    slug: "distributor-stockist",
+    number: "04",
+    title: "Distributor / Stockist",
+  },
+  {
+    slug: "doctor",
+    number: "05",
+    title: "Doctor / Registered Medical Practitioner",
+  },
 ];
 
 export default function SignupRoleSelectPage() {
   return (
-    <div className="min-h-screen bg-navy px-4 py-12">
-      <div className="max-w-3xl mx-auto text-center mb-10">
-        <Link to="/" className="inline-flex items-center gap-2 mb-8">
-          <div className="h-9 w-9 rounded-lg bg-sage flex items-center justify-center">
-            <Pill className="text-navy" size={20} />
+    <main className="min-h-screen bg-gradient-to-br from-[#2A1B3D]  to-[#44318D] text-white">
+      <div className="min-h-screen max-w-[1320px] mx-auto px-6 md:px-10 lg:px-16">
+
+        {/* Content */}
+        <section className="grid lg:grid-cols-[0.85fr_1.15fr] gap-14 lg:gap-24 pt-20 md:pt-28 pb-16">
+
+          {/* Left */}
+          <div>
+            <div className="flex items-center justify-between pb-[70px] -mt-10 md:-mt-14">
+
+              {/* Brand */}
+              <Link
+                to="/"
+                className="flex items-center gap-2.5"
+              >
+                <img
+                  src={logo}
+                  alt="PharmUnis"
+                  className="w-[45px] h-auto"
+                />
+
+                <span
+                  className="text-[25px] tracking-wide text-white"
+                  style={{ fontFamily: "Cinzel" }}
+                >
+                  Pharm
+                  <span className="text-[#D83F87]">Unis</span>
+                </span>
+              </Link>
+            </div>
+
+            <p
+              className="
+                text-[#D83F87]
+                text-3xl
+                md:text-4xl
+                mb-4
+              "
+              style={{ fontFamily: "Great Vibes" }}
+            >
+              Welcome
+            </p>
+
+            <h1
+              className="
+                text-5xl
+                md:text-6xl
+                xl:text-[68px]
+                leading-[0.95]
+                text-[#F7F5FA]
+              "
+              style={{ fontFamily: "Cinzel" }}
+            >
+              Choose your
+              <br />
+              professional
+              <br />
+              <span className="text-[#D83F87]">
+                role.
+              </span>
+            </h1>
+
+            <p
+              className="
+                mt-8
+                max-w-[350px]
+                text-sm
+                leading-7
+                text-[#A4B3B6]
+              "
+              style={{ fontFamily: "Fauna One" }}
+            >
+              Select the role that best represents your
+              professional identity on PharmUnis.
+            </p>
+
+            {/* Login */}
+            <div
+              className="
+                flex items-center gap-2
+                text-xs
+                text-[#A4B3B6]
+                mt-10
+              "
+              style={{ fontFamily: "Fauna One" }}
+            >
+              <span className="hidden sm:block">
+                Already have an account?
+              </span>
+
+              <Link
+                to="/login"
+                className="
+                  text-[#D83F87]
+                  hover:text-white
+                  transition-colors
+                "
+              >
+                Sign in
+              </Link>
+            </div>
           </div>
-          <span className="font-display font-bold text-xl text-white">PharmX</span>
-        </Link>
-        <h1 className="font-display text-2xl md:text-3xl font-bold text-white mb-2">How will you use PharmX?</h1>
-        <p className="text-white/60">Pick the role that best describes you — you can complete your full profile after signup.</p>
+
+          {/* Right */}
+          <div>
+
+            {/* Role Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <span
+                className="
+                  text-[10px]
+                  uppercase
+                  tracking-[0.22em]
+                  text-[#A4B3B6]/60
+                "
+                style={{ fontFamily: "Unica One" }}
+              >
+                Select your role
+              </span>
+
+              <span
+                className="
+                  text-[10px]
+                  uppercase
+                  tracking-[0.22em]
+                  text-[#A4B3B6]/40
+                "
+                style={{ fontFamily: "Unica One" }}
+              >
+                05 options
+              </span>
+            </div>
+
+            {/* Roles */}
+            <div>
+              {ROLES.map((role) => (
+                <Link
+                  key={role.slug}
+                  to={`/signup/${role.slug}`}
+                  className="
+                    group
+                    flex
+                    items-center
+                    gap-5
+                    md:gap-7
+                    min-h-[105px]
+                    border-b
+                    border-white/10
+                    transition-all
+                    duration-300
+                    hover:bg-white/[0.035]
+                    hover:pl-3
+                  "
+                >
+
+                  {/* Number */}
+                  <span
+                    className="
+                      w-7
+                      shrink-0
+                      text-[11px]
+                      tracking-[0.12em]
+                      text-[#A4B3B6]/50
+                      group-hover:text-[#D83F87]
+                      transition-colors
+                    "
+                    style={{ fontFamily: "Unica One" }}
+                  >
+                    {role.number}
+                  </span>
+
+                  {/* Role */}
+                  <h2
+                    className="
+                      flex-1
+                      text-xl
+                      md:text-2xl
+                      lg:text-[27px]
+                      leading-tight
+                      text-[#F7F5FA]/80
+                      group-hover:text-white
+                      transition-colors
+                    "
+                    style={{ fontFamily: "Philosopher" }}
+                  >
+                    {role.title}
+                  </h2>
+
+                  {/* Arrow */}
+                  <span
+                    className="
+                      text-lg
+                      text-[#A4B3B6]/30
+                      group-hover:text-[#D83F87]
+                      group-hover:translate-x-1
+                      transition-all
+                    "
+                  >
+                    →
+                  </span>
+                </Link>
+              ))}
+            </div>
+
+            {/* Note */}
+            <p
+              className="
+                mt-7
+                text-[11px]
+                leading-5
+                text-[#A4B3B6]/50
+              "
+              style={{ fontFamily: "Fauna One" }}
+            >
+              You can complete your professional details and
+              verification information after creating your account.
+            </p>
+          </div>
+        </section>
       </div>
-      <div className="max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {ROLES.map((r) => (
-          <Link
-            key={r.role}
-            to={`/signup/${r.role}`}
-            className="rounded-xl p-6 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
-          >
-            <r.icon className="text-sage mb-3" size={26} />
-            <h3 className="font-display font-semibold text-white mb-1 group-hover:text-sage transition-colors">{r.label}</h3>
-            <p className="text-white/50 text-sm">{r.desc}</p>
-          </Link>
-        ))}
-      </div>
-      <p className="text-center text-white/40 text-sm mt-8">
-        Already have an account?{" "}
-        <Link to="/login" className="text-sage font-medium">
-          Log in
-        </Link>
-      </p>
-    </div>
+    </main>
   );
 }

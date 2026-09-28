@@ -52,18 +52,124 @@ async function listMRs({ territory, specialization, workMode }) {
 }
 
 // ---------- Pharma Company ----------
+// ---------- Pharma Company ----------
+
 function serializePharma(p) {
   return {
     id: p._id,
     userId: p.userId,
+
     companyName: p.companyName,
     logoUrl: p.logoUrl,
     description: p.description,
+
     manufacturingLocation: p.manufacturingLocation,
     areasOfOperation: p.areasOfOperation,
     productCategories: p.productCategories,
+
+    website: p.website,
+    contactPersonName: p.contactPersonName,
+    contactPersonDesignation: p.contactPersonDesignation,
+
+    businessVerified: p.businessVerified,
+    verificationStatus: p.verificationStatus,
+    verificationDate: p.verificationDate,
+
     updatedAt: p.updatedAt,
   };
+}
+
+async function getPharmaProfileByUserId(userId) {
+  const p = await PharmaCompanyProfile.findOne({ userId });
+
+  if (!p) {
+    throw new ApiError(
+      404,
+      "NOT_FOUND",
+      "Company profile not found"
+    );
+  }
+
+  return serializePharma(p);
+}
+
+async function getPharmaProfileById(id) {
+  const p = await PharmaCompanyProfile.findById(id);
+
+  if (!p) {
+    throw new ApiError(
+      404,
+      "NOT_FOUND",
+      "Company profile not found"
+    );
+  }
+
+  return serializePharma(p);
+}
+
+async function updatePharmaProfile(userId, patch) {
+  const allowedFields = [
+    "companyName",
+    "logoUrl",
+    "description",
+    "manufacturingLocation",
+    "areasOfOperation",
+    "productCategories",
+    "website",
+    "contactPersonName",
+    "contactPersonDesignation",
+  ];
+
+  const safePatch = {};
+
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(patch, field)) {
+      safePatch[field] = patch[field];
+    }
+  }
+
+  const p = await PharmaCompanyProfile.findOneAndUpdate(
+    { userId },
+    { $set: safePatch },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  if (!p) {
+    throw new ApiError(
+      404,
+      "NOT_FOUND",
+      "Company profile not found"
+    );
+  }
+
+  return serializePharma(p);
+}
+
+async function listPharmaCompanies({ territory, category }) {
+  const query = {};
+
+  if (territory) {
+    query.areasOfOperation = {
+      $regex: territory,
+      $options: "i",
+    };
+  }
+
+  if (category) {
+    query.productCategories = {
+      $regex: category,
+      $options: "i",
+    };
+  }
+
+  const rows = await PharmaCompanyProfile
+    .find(query)
+    .sort({ updatedAt: -1 });
+
+  return rows.map(serializePharma);
 }
 
 async function getPharmaProfileByUserId(userId) {
@@ -200,9 +306,25 @@ async function getDisplayProfile(userId, role) {
 }
 
 module.exports = {
-  getMRProfileByUserId, getMRProfileById, updateMRProfile, listMRs,
-  getPharmaProfileByUserId, getPharmaProfileById, updatePharmaProfile, listPharmaCompanies,
-  getPharmacyProfileByUserId, getPharmacyProfileById, updatePharmacyProfile, listPharmacies,
-  getStockistProfileByUserId, getStockistProfileById, updateStockistProfile, listStockists,
+  getMRProfileByUserId,
+  getMRProfileById,
+  updateMRProfile,
+  listMRs,
+
+  getPharmaProfileByUserId,
+  getPharmaProfileById,
+  updatePharmaProfile,
+  listPharmaCompanies,
+
+  getPharmacyProfileByUserId,
+  getPharmacyProfileById,
+  updatePharmacyProfile,
+  listPharmacies,
+
+  getStockistProfileByUserId,
+  getStockistProfileById,
+  updateStockistProfile,
+  listStockists,
+
   getDisplayProfile,
 };
