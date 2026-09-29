@@ -36,12 +36,16 @@ const Trust = () => {
         relative
      
          bg-[#A4B3B6]
-        px-6
-        pb-24
-        pt-36
+      px-4
+sm:px-6
+md:px-12
+lg:px-20
+pb-16
+md:pb-24
+pt-28
+md:pt-36
         text-[#2A1B3D]
-        md:px-12
-        lg:px-20
+       
         mt-[-20px]
         
       "
@@ -90,8 +94,23 @@ const Trust = () => {
    <path d=" M0 0 H1440 V45 C1260 125 1110 125 960 55 C810 -15 630 -15 480 55 C330 125 180 125 0 45 Z " fill="#2A1B3D" /> 
    </svg>
     {/* Decorative heading sits ON the curve */} 
-   <div className=" absolute left-1/2 top-[42px] z-30 -translate-x-1/2 whitespace-nowrap " >
-    <h2 className=" font-['Great_Vibes'] text-6xl font-normal leading-none text-white/80 drop-shadow-[0_2px_2px_rgba(42,27,61,0.25)] md:text-7xl lg:text-8xl tracking-wide" > Built on Trust </h2> 
+   <div className=" absolute left-1/2 top-[48px] sm:top-[42px] z-30 -translate-x-1/2 whitespace-nowrap " >
+  <h2
+  className="
+    font-['Great_Vibes']
+    text-5xl
+    sm:text-6xl
+    md:text-7xl
+    lg:text-8xl
+    font-normal
+    leading-none
+    text-white/80
+    drop-shadow-[0_2px_2px_rgba(42,27,61,0.25)]
+    tracking-wide
+  "
+>
+  Built on Trust
+</h2>
     </div>
      </div>
 
@@ -117,24 +136,39 @@ const Trust = () => {
 <h3
   className="
     mt-4
-    flex
-    items-center
-    justify-center
-    gap-2
-    whitespace-nowrap
+    text-center
     font-['Philosopher']
-    text-3xl
-    font-bold
-    leading-tight
-    text-[#2A1B3D]
+    text-2xl
+    sm:text-3xl
     md:text-4xl
+    lg:text-[42px]
+    font-bold
+    leading-[1.15]
   "
 >
-  Verified connections.
-  <span className="text-[#44318D]">
+  <span className="block sm:inline">
+    <span className="text-[#2A1B3D]">
+      Verified connections.
+    </span>
+  </span>
+
+  <span
+    className="
+      block
+      sm:inline
+      sm:ml-2
+      md:ml-3
+      text-[#44318D]
+    "
+  >
     Better professional interactions.
   </span>
 </h3>
+  {/* Verified connections.
+  <span className="text-[#44318D]">
+    Better professional interactions.
+  </span>
+</h3> */}
 
 
 
@@ -166,12 +200,17 @@ const Trust = () => {
 
   {/* FOUNDATION CARD */}
  {/* FOUNDATION CARD */}
+{/* =====================================================
+    FOUNDATION CARD
+===================================================== */}
+
 <div
   className="
     group
     relative
     overflow-hidden
-    rounded-[32px]
+    rounded-[28px]
+    md:rounded-[32px]
     border
     border-[#44318D]/15
     bg-white
@@ -181,7 +220,9 @@ const Trust = () => {
   {/* Decorative top line */}
   <div className="absolute left-0 right-0 top-0 h-[3px]">
     <div className="h-full w-1/3 bg-[#D83F87]" />
+
     <div className="absolute left-1/3 top-0 h-full w-1/3 bg-[#44318D]" />
+
     <div className="absolute right-0 top-0 h-full w-1/3 bg-[#E98074]" />
   </div>
 
@@ -190,13 +231,17 @@ const Trust = () => {
     className="
       pointer-events-none
       absolute
-      -right-24
-      -top-24
-      h-72
-      w-72
+      -right-20
+      -top-20
+      h-64
+      w-64
       rounded-full
       border
       border-[#44318D]/10
+      md:-right-24
+      md:-top-24
+      md:h-72
+      md:w-72
     "
   />
 
@@ -204,48 +249,52 @@ const Trust = () => {
     className="
       pointer-events-none
       absolute
-      -right-14
-      -top-14
-      h-48
-      w-48
+      -right-10
+      -top-10
+      h-40
+      w-40
       rounded-full
       bg-[#44318D]/[0.035]
+      md:-right-14
+      md:-top-14
+      md:h-48
+      md:w-48
     "
   />
 
+  {/* Main layout */}
   <div
     className="
-      pointer-events-none
-      absolute
-      bottom-[-100px]
-      left-[-70px]
-      h-56
-      w-56
-      rounded-full
-      bg-[#D83F87]/[0.035]
+      relative
+      grid
+      md:grid-cols-[200px_1fr]
     "
-  />
-
-  {/* Main content */}
-  <div className="relative grid md:grid-cols-[180px_1fr]">
-    
-    {/* LEFT SEAL AREA */}
+  >
+    {/* =========================
+        LEFT VERIFICATION PANEL
+    ========================== */}
     <div
       className="
         flex
         items-center
-        justify-center
+        gap-5
         border-b
         border-[#44318D]/10
         bg-[#F7F5FA]
-        p-8
+        px-6
+        py-6
+
+        md:flex-col
+        md:justify-center
+        md:gap-4
         md:border-b-0
         md:border-r
-        md:p-10
+        md:px-6
+        md:py-10
       "
     >
-      <div className="relative flex h-28 w-28 items-center justify-center">
-        
+      {/* Seal */}
+      <div className="relative flex h-20 w-20 shrink-0 items-center justify-center md:h-28 md:w-28">
         {/* Outer ring */}
         <div
           className="
@@ -277,8 +326,8 @@ const Trust = () => {
           className="
             relative
             flex
-            h-[68px]
-            w-[68px]
+            h-12
+            w-12
             items-center
             justify-center
             rounded-full
@@ -288,34 +337,84 @@ const Trust = () => {
             transition-transform
             duration-300
             group-hover:scale-105
+
+            md:h-[68px]
+            md:w-[68px]
           "
         >
           <BadgeCheck
-            size={34}
+            size={26}
             strokeWidth={1.7}
+            className="md:h-[34px] md:w-[34px]"
           />
 
-          {/* Status dot */}
           <span
             className="
               absolute
-              right-1
-              top-1
-              h-4
-              w-4
+              right-0
+              top-0
+              h-3
+              w-3
               rounded-full
-              border-[3px]
+              border-2
               border-[#44318D]
               bg-[#D83F87]
+
+              md:right-1
+              md:top-1
+              md:h-4
+              md:w-4
+              md:border-[3px]
             "
           />
         </div>
       </div>
+
+      {/* Mobile / desktop seal text */}
+      <div className="md:text-center">
+        <p
+          className="
+            font-[Fauna_One]
+            text-[9px]
+            font-semibold
+            uppercase
+            tracking-[2px]
+            text-[#44318D]
+          "
+        >
+          Verified foundation
+        </p>
+
+        <p
+          className="
+            mt-1
+            font-[Fauna_One]
+            text-[10px]
+            leading-5
+            text-[#2A1B3D]/50
+          "
+        >
+          Verification comes first
+        </p>
+      </div>
     </div>
 
-    {/* RIGHT CONTENT */}
-    <div className="relative p-7 md:p-10 lg:p-12">
-      
+    {/* =========================
+        RIGHT CONTENT
+    ========================== */}
+    <div
+      className="
+        relative
+        px-6
+        py-7
+        sm:px-7
+        sm:py-8
+        md:px-10
+        md:py-10
+        lg:px-12
+        lg:py-12
+      "
+    >
       {/* Label */}
       <div className="flex items-center gap-3">
         <span className="h-[2px] w-8 bg-[#D83F87]" />
@@ -338,12 +437,14 @@ const Trust = () => {
       <h6
         className="
           mt-3
+          max-w-2xl
           font-['Philosopher']
-          text-[26px]
+          text-[25px]
+          sm:text-[27px]
+          md:text-[30px]
           font-bold
           leading-tight
           text-[#2A1B3D]
-          md:text-[30px]
         "
       >
         Verification comes first.
@@ -355,20 +456,31 @@ const Trust = () => {
           mt-3
           max-w-2xl
           font-[Fauna_One]
-          text-sm
-          leading-7
-          text-[#2A1B3D]/60
+          text-[13px]
+          sm:text-sm
           md:text-[15px]
+          leading-6
+          md:leading-7
+          text-[#2A1B3D]/60
         "
       >
-        Different roles may require different verification requirements.
-        PharmUnis is designed to make relevant professional information
-        clearer before meaningful connections begin.
+        Different roles may require different verification
+        requirements. PharmUnis is designed to make relevant
+        professional information clearer before meaningful
+        connections begin.
       </p>
 
-      {/* Bottom visual detail */}
-      <div className="mt-7 flex items-center gap-3">
-        <span className="h-[1px] w-16 bg-[#44318D]/15" />
+      {/* Bottom detail */}
+      <div
+        className="
+          mt-6
+          flex
+          flex-wrap
+          items-center
+          gap-3
+        "
+      >
+        <span className="h-[1px] w-10 bg-[#44318D]/15 md:w-16" />
 
         <span
           className="
@@ -383,7 +495,7 @@ const Trust = () => {
           Built for clarity
         </span>
 
-        <span className="h-[1px] w-16 bg-[#44318D]/15" />
+        <span className="h-[1px] w-10 bg-[#44318D]/15 md:w-16" />
       </div>
     </div>
   </div>
