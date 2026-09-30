@@ -17,6 +17,7 @@ pharmx/
 └── frontend/   React (Vite) + React Router + Tailwind v4
 ```
 
+
 ---
 
 ## 1. Quick start
