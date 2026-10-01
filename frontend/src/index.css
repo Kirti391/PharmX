@@ -35,3 +35,264 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* =========================================================
+   PHARMUNIS — INTERACTIONS & ANIMATIONS
+   Uses the updated PharmUnis brand palette.
+   ========================================================= */
+
+.pharmunis-interactive {
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease,
+    background-color 220ms ease,
+    color 220ms ease;
+}
+
+.pharmunis-interactive:hover {
+  transform: translateY(-2px);
+}
+
+.pharmunis-card {
+  transition:
+    transform 240ms ease,
+    box-shadow 240ms ease,
+    border-color 240ms ease;
+}
+
+.pharmunis-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(42, 27, 61, 0.10);
+  border-color: rgba(216, 63, 135, 0.25);
+}
+
+.pharmunis-button {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.pharmunis-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(216, 63, 135, 0.22);
+}
+
+.pharmunis-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* =========================================================
+   SIDEBAR NAVIGATION
+   ========================================================= */
+
+.pharmunis-nav-item {
+  position: relative;
+
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.pharmunis-nav-item:hover {
+  transform: translateX(3px);
+}
+
+.pharmunis-nav-item-active::before {
+  content: "";
+
+  position: absolute;
+  left: -1px;
+  top: 50%;
+
+  width: 3px;
+  height: 55%;
+
+  border-radius: 999px;
+
+  background: #E98074;
+
+  transform: translateY(-50%);
+}
+
+/* =========================================================
+   BRAND GLOW
+   ========================================================= */
+
+.pharmunis-glow {
+  box-shadow:
+    0 0 0 1px rgba(216, 63, 135, 0.08),
+    0 12px 40px rgba(216, 63, 135, 0.10);
+}
+
+.pharmunis-glow:hover {
+  box-shadow:
+    0 0 0 1px rgba(216, 63, 135, 0.16),
+    0 18px 50px rgba(216, 63, 135, 0.17);
+}
+
+/* =========================================================
+   PAGE ENTRANCE
+   ========================================================= */
+
+@keyframes pharmunis-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pharmunis-fade-up {
+  animation: pharmunis-fade-up 450ms ease-out both;
+}
+
+@keyframes pharmunis-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.pharmunis-fade-in {
+  animation: pharmunis-fade-in 350ms ease-out both;
+}
+
+/* =========================================================
+   FLOATING EFFECT
+   ========================================================= */
+
+@keyframes pharmunis-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.pharmunis-float {
+  animation: pharmunis-float 4s ease-in-out infinite;
+}
+
+/* =========================================================
+   NOTIFICATION PULSE
+   ========================================================= */
+
+@keyframes pharmunis-notification-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(216, 63, 135, 0.35);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(216, 63, 135, 0);
+  }
+}
+
+.pharmunis-notification-pulse {
+  animation: pharmunis-notification-pulse 2s ease-in-out infinite;
+}
+
+/* =========================================================
+   SHIMMER
+   ========================================================= */
+
+@keyframes pharmunis-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+.pharmunis-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.pharmunis-shimmer::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  width: 45%;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  );
+
+  transform: translateX(-120%);
+  animation: pharmunis-shimmer 3.5s ease-in-out infinite;
+}
+
+/* =========================================================
+   DRAWER
+   ========================================================= */
+
+.pharmunis-drawer {
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 300ms ease;
+}
+
+/* =========================================================
+   STAGGER
+   ========================================================= */
+
+.pharmunis-delay-1 {
+  animation-delay: 80ms;
+}
+
+.pharmunis-delay-2 {
+  animation-delay: 160ms;
+}
+
+.pharmunis-delay-3 {
+  animation-delay: 240ms;
+}
+
+.pharmunis-delay-4 {
+  animation-delay: 320ms;
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .pharmunis-interactive,
+  .pharmunis-card,
+  .pharmunis-button,
+  .pharmunis-nav-item,
+  .pharmunis-drawer {
+    transition: none !important;
+  }
+
+  .pharmunis-fade-up,
+  .pharmunis-fade-in,
+  .pharmunis-float,
+  .pharmunis-notification-pulse,
+  .pharmunis-shimmer {
+    animation: none !important;
+  }
+}
