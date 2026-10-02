@@ -14,9 +14,12 @@ import DiscoverCompaniesPage from "./pages/DiscoverCompaniesPage";
 import DiscoverMRsPage from "./pages/DiscoverMRsPage";
 import DiscoverPharmaciesPage from "./pages/DiscoverPharmaciesPage";
 import DiscoverStockistsPage from "./pages/DiscoverStockistsPage";
+
 import RequirementsPage from "./pages/RequirementsPage";
 import RequirementCreatePage from "./pages/RequirementCreatePage";
 import RequirementDetailPage from "./pages/RequirementDetailPage";
+import RequirementEditPage from "./pages/RequirementEditPage";
+
 import OpportunitiesPage from "./pages/OpportunitiesPage";
 import OpportunityCreatePage from "./pages/OpportunityCreatePage";
 import OpportunityDetailPage from "./pages/OpportunityDetailPage";
@@ -48,31 +51,218 @@ export default function App() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Authenticated app */}
-      <Route path="/dashboard" element={<Protected><DashboardPage /></Protected>} />
-      <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />
-      <Route path="/discover/companies" element={<Protected><DiscoverCompaniesPage /></Protected>} />
-      <Route path="/discover/mrs" element={<Protected><DiscoverMRsPage /></Protected>} />
-      <Route path="/discover/pharmacies" element={<Protected><DiscoverPharmaciesPage /></Protected>} />
-      <Route path="/discover/stockists" element={<Protected><DiscoverStockistsPage /></Protected>} />
-      <Route path="/requirements" element={<Protected><RequirementsPage /></Protected>} />
-      <Route path="/requirements/create" element={<Protected><RequirementCreatePage /></Protected>} />
-      <Route path="/requirements/:id" element={<Protected><RequirementDetailPage /></Protected>} />
-      <Route path="/opportunities" element={<Protected><OpportunitiesPage /></Protected>} />
-      <Route path="/opportunities/create" element={<Protected><OpportunityCreatePage /></Protected>} />
-      <Route path="/opportunities/:id" element={<Protected><OpportunityDetailPage /></Protected>} />
-      <Route path="/connections" element={<Protected><ConnectionsPage /></Protected>} />
-      <Route path="/appointments" element={<Protected><AppointmentsPage /></Protected>} />
-      <Route path="/appointments/:id" element={<Protected><AppointmentDetailPage /></Protected>} />
-      <Route path="/messages" element={<Protected><MessagesPage /></Protected>} />
-      <Route path="/messages/:conversationId" element={<Protected><ConversationPage /></Protected>} />
-      <Route path="/notifications" element={<Protected><NotificationsPage /></Protected>} />
-      <Route path="/verification" element={<Protected><VerificationPage /></Protected>} />
+      <Route
+        path="/dashboard"
+        element={
+          <Protected>
+            <DashboardPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/profile"
+        element={
+          <Protected>
+            <ProfilePage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/discover/companies"
+        element={
+          <Protected>
+            <DiscoverCompaniesPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/discover/mrs"
+        element={
+          <Protected>
+            <DiscoverMRsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/discover/pharmacies"
+        element={
+          <Protected>
+            <DiscoverPharmaciesPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/discover/stockists"
+        element={
+          <Protected>
+            <DiscoverStockistsPage />
+          </Protected>
+        }
+      />
+
+      {/* Requirements */}
+      <Route
+        path="/requirements"
+        element={
+          <Protected>
+            <RequirementsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/requirements/create"
+        element={
+          <Protected>
+            <RequirementCreatePage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/requirements/:id/edit"
+        element={
+          <Protected>
+            <RequirementEditPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/requirements/:id"
+        element={
+          <Protected>
+            <RequirementDetailPage />
+          </Protected>
+        }
+      />
+
+      {/* Opportunities */}
+      <Route
+        path="/opportunities"
+        element={
+          <Protected>
+            <OpportunitiesPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/opportunities/create"
+        element={
+          <Protected>
+            <OpportunityCreatePage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/opportunities/:id"
+        element={
+          <Protected>
+            <OpportunityDetailPage />
+          </Protected>
+        }
+      />
+
+      {/* Relationships */}
+      <Route
+        path="/connections"
+        element={
+          <Protected>
+            <ConnectionsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/appointments"
+        element={
+          <Protected>
+            <AppointmentsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/appointments/:id"
+        element={
+          <Protected>
+            <AppointmentDetailPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/messages"
+        element={
+          <Protected>
+            <MessagesPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/messages/:conversationId"
+        element={
+          <Protected>
+            <ConversationPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/notifications"
+        element={
+          <Protected>
+            <NotificationsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/verification"
+        element={
+          <Protected>
+            <VerificationPage />
+          </Protected>
+        }
+      />
 
       {/* Admin */}
-      <Route path="/admin/dashboard" element={<Protected adminOnly><AdminDashboardPage /></Protected>} />
-      <Route path="/admin/users" element={<Protected adminOnly><AdminUsersPage /></Protected>} />
-      <Route path="/admin/verifications" element={<Protected adminOnly><AdminVerificationsPage /></Protected>} />
+      <Route
+        path="/admin/dashboard"
+        element={
+          <Protected adminOnly>
+            <AdminDashboardPage />
+          </Protected>
+        }
+      />
 
+      <Route
+        path="/admin/users"
+        element={
+          <Protected adminOnly>
+            <AdminUsersPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/admin/verifications"
+        element={
+          <Protected adminOnly>
+            <AdminVerificationsPage />
+          </Protected>
+        }
+      />
+
+      {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

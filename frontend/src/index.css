@@ -1,44 +1,105 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Fauna+One&family=Great+Vibes&display=swap');
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Fauna+One&family=Great+Vibes&family=Philosopher:wght@400;700&family=Unica+One&display=swap');
 @import "tailwindcss";
 
-/* PharmX design tokens — palette supplied by the user (sage/navy/taupe), wired
-   into Tailwind v4's CSS-first theming. Every bg-*, text-*, border-* utility
-   below is auto-generated from these custom properties. */
-@theme {
-  --color-navy: #112D32;      /* darkest — page background, sidebar, hero */
-  --color-tealdeep: #254E58;  /* panels/cards on dark backgrounds */
-  --color-sage: #88BDBC;      /* primary accent — buttons, links, active states */
-  --color-taupedark: #4F4A41; /* muted text on light backgrounds, borders */
-  --color-taupe: #6E6658;     /* secondary text, dividers */
+/* =========================================================
+   PHARMUNIS — DESIGN TOKENS
+   Tailwind CSS v4 / CSS-first configuration
+   ========================================================= */
 
-  --font-display: "Plus Jakarta Sans", "Segoe UI", sans-serif;
-  --font-body: "Inter", "Segoe UI", sans-serif;
+@theme {
+  /* Brand colors */
+  --color-primary: #D83F87;
+  --color-navy: #2A1B3D;
+  --color-purple: #44318D;
+  --color-coral: #E98074;
+  --color-muted: #A4B3B6;
+  --color-background: #F8F7F9;
+  --color-border: #E9E6EC;
+
+  /* Supporting legacy aliases */
+  --color-tealdeep: #44318D;
+  --color-sage: #D83F87;
+  --color-taupedark: #4F4A41;
+  --color-taupe: #6E6658;
+
+  /* Brand typography */
+  --font-display: "Cinzel", serif;
+  --font-body: "Fauna One", serif;
+  --font-nav: "Unica One", sans-serif;
+  --font-support: "Philosopher", sans-serif;
 }
+
+/* =========================================================
+   BASE
+   ========================================================= */
 
 :root {
   color-scheme: light;
 }
 
-body {
-  font-family: var(--font-body);
-  background-color: #F4F1EC; /* warm off-white, sits well against the taupe/sage palette */
-  color: var(--color-navy);
+html {
+  background-color: #F8F7F9;
 }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+
+  font-family: "Fauna One", serif;
+
+  background-color: #F8F7F9;
+  color: #2A1B3D;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =========================================================
+   PHARMUNIS — TYPOGRAPHY
+   ========================================================= */
 
 .font-display {
-  font-family: var(--font-display);
+  font-family: "Cinzel", serif;
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: rgba(17, 45, 50, 0.2); border-radius: 8px; }
+.font-body {
+  font-family: "Fauna One", serif;
+}
 
-@media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+.font-nav {
+  font-family: "Unica One", sans-serif;
+}
+
+.font-support {
+  font-family: "Philosopher", sans-serif;
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F8F7F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(42, 27, 61, 0.20);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(216, 63, 135, 0.45);
 }
 
 /* =========================================================
    PHARMUNIS — INTERACTIONS & ANIMATIONS
-   Uses the updated PharmUnis brand palette.
    ========================================================= */
 
 .pharmunis-interactive {
@@ -276,10 +337,28 @@ body {
 }
 
 /* =========================================================
+   FOCUS / ACCESSIBILITY
+   ========================================================= */
+
+:focus-visible {
+  outline: 2px solid #D83F87;
+  outline-offset: 2px;
+}
+
+/* =========================================================
    REDUCED MOTION
    ========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
   .pharmunis-interactive,
   .pharmunis-card,
   .pharmunis-button,
@@ -296,3 +375,4 @@ body {
     animation: none !important;
   }
 }
+
