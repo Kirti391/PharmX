@@ -3,6 +3,7 @@ const { asyncHandler, requireAuth } = require("../../common/middleware");
 const { ApiError, created, fail, ok } = require("../../common/http");
 const Connection = require("../../models/Connection");
 const User = require("../../models/User");
+const DoctorProfile = require("../../models/DoctorProfile");
 const { getDisplayProfile } = require("../profiles/service");
 const { createNotification } = require("../notifications/service");
 const { emitRealtime } = require("../../realtime/bus");
@@ -10,6 +11,39 @@ const { emitRealtime } = require("../../realtime/bus");
 const router = express.Router();
 
 router.use(requireAuth);
+
+const CONNECTION_ROLES = {
+  PHARMACY: [
+    "PHARMA_COMPANY",
+    "MR",
+    "DISTRIBUTOR_STOCKIST",
+  ],
+  MR: [
+    "PHARMACY",
+    "PHARMA_COMPANY",
+    "DISTRIBUTOR_STOCKIST",
+    "DOCTOR",
+  ],
+  PHARMA_COMPANY: [
+    "PHARMACY",
+    "MR",
+    "DISTRIBUTOR_STOCKIST",
+    "DOCTOR",
+  ],
+  DISTRIBUTOR_STOCKIST: [
+    "PHARMACY",
+    "PHARMA_COMPANY",
+    "MR",
+  ],
+};
+
+function normalizeRole(role) {
+  if (role === "STOCKIST" || role === "DISTRIBUTOR") {
+    return "DISTRIBUTOR_STOCKIST";
+  }
+
+  return role;
+}
 
 async function enrich(c) {
   const requester = await User.findById(c.requesterId);
@@ -71,6 +105,53 @@ router.post(
         404,
         "NOT_FOUND",
         "Recipient not found"
+      );
+    }
+    if (recipient.status !== "ACTIVE") {
+      return fail(
+        res,
+        403,
+        "RECIPIENT_ACCOUNT_RESTRICTED",
+        "Connection requests cannot be sent to an inactive account"
+      );
+    }
+
+    const requesterRole = normalizeRole(req.user.role);
+    const recipientRole = normalizeRole(recipient.role);
+    const allowedRecipients = CONNECTION_ROLES[requesterRole] || [];
+
+    if (!allowedRecipients.includes(recipientRole)) {
+      return fail(
+        res,
+        403,
+        "ROLE_CONNECTION_RESTRICTED",
+        "This profile combination is not available for general connection requests"
+      );
+    }
+
+    if (recipientRole === "DOCTOR") {
+      const doctor = await DoctorProfile.findOne({
+        userId: recipient._id,
+      });
+      const acceptsRequest =
+        requesterRole === "MR"
+          ? doctor?.acceptsMRRequests
+          : doctor?.acceptsCompanyInformation;
+
+      if (!doctor || !acceptsRequest) {
+        return fail(
+          res,
+          403,
+          "DOCTOR_NOT_ACCEPTING_REQUESTS",
+          "This doctor is not accepting this type of professional request"
+        );
+      }
+
+      return fail(
+        res,
+        403,
+        "DOCTOR_CONNECTION_REQUIRES_APPOINTMENT",
+        "Doctor contact must include a professional purpose and appointment request"
       );
     }
 

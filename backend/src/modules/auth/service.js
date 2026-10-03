@@ -11,6 +11,7 @@ const { ApiError } = require("../../common/http");
 const { signAccessToken, signRefreshToken, hashToken } = require("../../common/tokens");
 const { recordAudit } = require("../../common/audit");
 const DoctorProfile = require("../../models/DoctorProfile");
+const { normalizeRole } = require("../../common/constants");
 const REFRESH_TTL_MS = env.refreshTokenTtlDays * 24 * 60 * 60 * 1000;
 
 function publicUser(user) {
@@ -18,7 +19,7 @@ function publicUser(user) {
     id: user._id,
     email: user.email,
     mobile: user.mobile,
-    role: user.role,
+    role: normalizeRole(user.role),
     status: user.status,
     createdAt: user.createdAt,
     lastLoginAt: user.lastLoginAt,
@@ -26,7 +27,13 @@ function publicUser(user) {
 }
 
 /** Creates the minimal role-specific profile document that signup requires. */
-async function createInitialProfile(userId, role, displayName, location) {
+async function createInitialProfile(
+  userId,
+  role,
+  displayName,
+  location,
+  businessType
+) {
   if (role === "MR") {
     await MRProfile.create({
       userId,
@@ -64,7 +71,8 @@ async function createInitialProfile(userId, role, displayName, location) {
     await StockistProfile.create({
       userId,
       companyName: displayName,
-      type: "STOCKIST",
+      type: businessType || "STOCKIST",
+      serviceAreas: [location],
     });
   } else if (role === "DOCTOR") {
     if (!location) {
@@ -90,7 +98,15 @@ async function issueTokenPair(user) {
   return { accessToken, refreshToken };
 }
 
-async function signup({ email, mobile, password, role, displayName, location }) {
+async function signup({
+  email,
+  mobile,
+  password,
+  role,
+  displayName,
+  location,
+  businessType,
+}) {
   const existingEmail = await User.findOne({ email });
   if (existingEmail) throw new ApiError(409, "EMAIL_TAKEN", "An account with this email already exists");
   const existingMobile = await User.findOne({ mobile });
@@ -99,7 +115,25 @@ async function signup({ email, mobile, password, role, displayName, location }) 
   const passwordHash = await bcrypt.hash(password, 10);
   // No OTP step in this build — accounts are ACTIVE immediately (see User.js comment).
   const user = await User.create({ email, mobile, passwordHash, role, status: "ACTIVE" });
-  await createInitialProfile(user._id, role, displayName, location);
+  try {
+    await createInitialProfile(
+      user._id,
+      role,
+      displayName,
+      location,
+      businessType
+    );
+  } catch (profileError) {
+    try {
+      await User.deleteOne({ _id: user._id });
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [profileError, cleanupError],
+        "Signup failed and the incomplete account could not be removed"
+      );
+    }
+    throw profileError;
+  }
 
   await recordAudit({ userId: user._id, action: "USER_SIGNED_UP", targetType: "User", targetId: user._id.toString() });
 
@@ -118,7 +152,10 @@ async function login(email, password) {
   if (user.status === "REJECTED") throw new ApiError(403, "ACCOUNT_REJECTED", "This account's verification was rejected");
 
   user.lastLoginAt = new Date();
-  await user.save();
+  await User.updateOne(
+    { _id: user._id },
+    { $set: { lastLoginAt: user.lastLoginAt } }
+  );
 
   await recordAudit({ userId: user._id, action: "USER_LOGGED_IN", targetType: "User", targetId: user._id.toString() });
   const tokens = await issueTokenPair(user);

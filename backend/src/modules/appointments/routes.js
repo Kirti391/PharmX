@@ -4,6 +4,11 @@ const { asyncHandler, requireAuth } = require("../../common/middleware");
 const { ApiError, created, fail, ok } = require("../../common/http");
 const Appointment = require("../../models/Appointment");
 const AppointmentReschedule = require("../../models/AppointmentReschedule");
+const Connection = require("../../models/Connection");
+const CompanyAuthorization = require("../../models/CompanyAuthorization");
+const DoctorProfile = require("../../models/DoctorProfile");
+const PharmaCompanyProfile = require("../../models/PharmaCompanyProfile");
+const VerificationDocument = require("../../models/VerificationDocument");
 const User = require("../../models/User");
 const { getDisplayProfile } = require("../profiles/service");
 const { createNotification } = require("../notifications/service");
@@ -11,6 +16,42 @@ const { emitRealtime } = require("../../realtime/bus");
 
 const router = express.Router();
 router.use(requireAuth);
+
+async function hasCurrentCompanyRegistration(company, date) {
+  return Boolean(
+    await VerificationDocument.exists({
+      userId: company.userId,
+      docType: "BUSINESS_REG",
+      status: "APPROVED",
+      $or: [{ expiryDate: null }, { expiryDate: { $gt: date } }],
+    })
+  );
+}
+
+const APPOINTMENT_ROLES = {
+  PHARMACY: [
+    "MR",
+    "PHARMA_COMPANY",
+    "DISTRIBUTOR_STOCKIST",
+  ],
+  MR: [
+    "PHARMACY",
+    "PHARMA_COMPANY",
+    "DISTRIBUTOR_STOCKIST",
+    "DOCTOR",
+  ],
+  PHARMA_COMPANY: [
+    "MR",
+    "PHARMACY",
+    "DISTRIBUTOR_STOCKIST",
+    "DOCTOR",
+  ],
+  DISTRIBUTOR_STOCKIST: [
+    "MR",
+    "PHARMACY",
+    "PHARMA_COMPANY",
+  ],
+};
 
 async function serialize(a) {
   const requester = await User.findById(a.requesterId);
@@ -37,6 +78,7 @@ async function serialize(a) {
     scheduledAt: a.scheduledAt,
     durationMinutes: a.durationMinutes,
     mode: a.mode,
+    purposeCategory: a.purposeCategory || "",
     status: a.status,
     disruptionReason: a.disruptionReason,
     notes: a.notes,
@@ -74,10 +116,12 @@ async function notifyAppointment(a, targetUserId, title, body) {
 
 const createSchema = z.object({
   recipientId: z.string().min(1),
+  companyId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
   scheduledAt: z.string().datetime(),
   durationMinutes: z.number().int().positive().max(240).default(30),
   mode: z.enum(["PHYSICAL", "VIDEO"]).default("PHYSICAL"),
-  notes: z.string().optional(),
+  notes: z.string().trim().max(1000).optional(),
+  purposeCategory: z.string().trim().max(120).optional(),
 });
 
 router.post(
@@ -87,6 +131,288 @@ router.post(
     if (!parsed.success) return fail(res, 400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid input");
     const recipient = await User.findById(parsed.data.recipientId);
     if (!recipient) return fail(res, 404, "NOT_FOUND", "Recipient not found");
+    if (recipient.status !== "ACTIVE") {
+      return fail(
+        res,
+        403,
+        "RECIPIENT_ACCOUNT_RESTRICTED",
+        "Appointments cannot be requested from an inactive account"
+      );
+    }
+
+    if (
+      !APPOINTMENT_ROLES[req.user.role]?.includes(recipient.role)
+    ) {
+      return fail(
+        res,
+        403,
+        "ROLE_APPOINTMENT_RESTRICTED",
+        "Appointments are not available between these account roles"
+      );
+    }
+
+    if (new Date(parsed.data.scheduledAt) <= new Date()) {
+      return fail(res, 400, "VALIDATION_ERROR", "Appointment time must be in the future");
+    }
+
+    let doctorProfile = null;
+    if (recipient.role === "DOCTOR") {
+      if (!["MR", "PHARMA_COMPANY"].includes(req.user.role)) {
+        return fail(
+          res,
+          403,
+          "DOCTOR_CONTACT_RESTRICTED",
+          "Only medical representatives or pharmaceutical companies may request a professional doctor appointment"
+        );
+      }
+
+      doctorProfile = await DoctorProfile.findOne({
+        userId: recipient._id,
+      });
+      if (
+        !doctorProfile ||
+        doctorProfile.registrationStatus !== "VERIFIED" ||
+        !doctorProfile.businessVerified ||
+        (doctorProfile.reVerificationDate &&
+          doctorProfile.reVerificationDate <= new Date())
+      ) {
+        return fail(
+          res,
+          403,
+          "DOCTOR_REGISTRATION_UNVERIFIED",
+          "Professional appointment requests require a verified doctor registration"
+        );
+      }
+      const currentMedicalRegistration = await VerificationDocument.exists({
+        userId: recipient._id,
+        docType: "MEDICAL_REGISTRATION",
+        status: "APPROVED",
+        $or: [
+          { expiryDate: null },
+          { expiryDate: { $gt: new Date(parsed.data.scheduledAt) } },
+        ],
+      });
+      if (!currentMedicalRegistration) {
+        return fail(
+          res,
+          403,
+          "DOCTOR_REGISTRATION_EXPIRED",
+          "A current approved medical registration is required"
+        );
+      }
+
+      if (
+        doctorProfile.blockedUserIds.some(
+          (blockedUserId) =>
+            blockedUserId.toString() === req.user.sub
+        )
+      ) {
+        return fail(
+          res,
+          403,
+          "DOCTOR_BLOCKED_REQUESTER",
+          "This doctor is not accepting requests from your account"
+        );
+      }
+
+      if (req.user.role === "PHARMA_COMPANY") {
+        const company = await PharmaCompanyProfile.findOne({
+          userId: req.user.sub,
+          businessVerified: true,
+          verificationStatus: "VERIFIED",
+        });
+        if (!company) {
+          return fail(
+            res,
+            403,
+            "COMPANY_VERIFICATION_REQUIRED",
+            "Only verified pharmaceutical companies may request doctor appointments"
+          );
+        }
+        if (
+          !(await hasCurrentCompanyRegistration(
+            company,
+            new Date(parsed.data.scheduledAt)
+          ))
+        ) {
+          return fail(
+            res,
+            403,
+            "COMPANY_REGISTRATION_EXPIRED",
+            "A current approved company registration is required"
+          );
+        }
+      }
+
+      const acceptsRequest =
+        req.user.role === "MR"
+          ? doctorProfile.acceptsMRRequests
+          : doctorProfile.acceptsCompanyInformation;
+
+      if (!doctorProfile || !acceptsRequest) {
+        return fail(
+          res,
+          403,
+          "DOCTOR_NOT_ACCEPTING_REQUESTS",
+          "This doctor is not accepting this type of professional request"
+        );
+      }
+
+      if (
+        !doctorProfile.communicationModes.includes(
+          parsed.data.mode
+        ) ||
+        parsed.data.durationMinutes !==
+          doctorProfile.appointmentDurationMinutes
+      ) {
+        return fail(
+          res,
+          400,
+          "DOCTOR_PREFERENCES_MISMATCH",
+          "The proposed meeting mode and duration must match the doctor's stated preferences"
+        );
+      }
+
+      if (
+        !parsed.data.purposeCategory ||
+        !parsed.data.notes ||
+        parsed.data.notes.length < 10
+      ) {
+        return fail(
+          res,
+          400,
+          "VALIDATION_ERROR",
+          "Doctor requests need a therapeutic category and a clear professional purpose"
+        );
+      }
+
+      if (req.user.role === "MR") {
+        if (!parsed.data.companyId) {
+          return fail(
+            res,
+            400,
+            "MR_COMPANY_AUTHORIZATION_REQUIRED",
+            "Select the company you are authorized to represent"
+          );
+        }
+        const authorization = await CompanyAuthorization.findOne({
+          companyId: parsed.data.companyId,
+          mrUserId: req.user.sub,
+          status: "ACTIVE",
+          expiresAt: { $gt: new Date(parsed.data.scheduledAt) },
+        });
+        const authorizationDocument = authorization
+          ? await VerificationDocument.findOne({
+              _id: authorization.verificationDocumentId,
+              userId: req.user.sub,
+              companyId: authorization.companyId,
+              docType: "COMPANY_AUTHORIZATION",
+              status: "APPROVED",
+              $or: [
+                { expiryDate: null },
+                { expiryDate: { $gt: new Date(parsed.data.scheduledAt) } },
+              ],
+            }).select("_id")
+          : null;
+        const categoryAuthorized = authorization?.categories.some(
+          (category) =>
+            category.toLowerCase() ===
+            parsed.data.purposeCategory.toLowerCase()
+        );
+        const doctorLocation = doctorProfile.location.trim().toLowerCase();
+        const territoryAuthorized =
+          authorization?.territories.some((territory) => {
+            const normalizedTerritory = territory.trim().toLowerCase();
+            return (
+              normalizedTerritory === doctorLocation ||
+              normalizedTerritory.includes(doctorLocation) ||
+              doctorLocation.includes(normalizedTerritory)
+            );
+          }) ?? false;
+        const companyStillVerified = authorization
+          ? await PharmaCompanyProfile.findOne({
+              _id: authorization.companyId,
+              businessVerified: true,
+              verificationStatus: "VERIFIED",
+            }).select("_id userId")
+          : false;
+        const companyRegistrationCurrent =
+          companyStillVerified &&
+          (await hasCurrentCompanyRegistration(
+            companyStillVerified,
+            new Date(parsed.data.scheduledAt)
+          ));
+
+        if (
+          !authorization ||
+          !authorizationDocument ||
+          !categoryAuthorized ||
+          !territoryAuthorized ||
+          !companyRegistrationCurrent
+        ) {
+          return fail(
+            res,
+            403,
+            "MR_AUTHORIZATION_SCOPE_MISMATCH",
+            "Your active company authorization must cover this category, territory, and appointment date"
+          );
+        }
+      }
+
+      if (
+        doctorProfile.acceptedCategories.length > 0 &&
+        !doctorProfile.acceptedCategories.some(
+          (category) =>
+            category.toLowerCase() ===
+            parsed.data.purposeCategory.toLowerCase()
+        )
+      ) {
+        return fail(
+          res,
+          403,
+          "DOCTOR_CATEGORY_NOT_ACCEPTED",
+          "This doctor is not accepting requests for that category"
+        );
+      }
+
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const requestsThisWeek = await Appointment.countDocuments({
+        recipientId: recipient._id,
+        createdAt: { $gte: weekAgo },
+      });
+
+      if (requestsThisWeek >= doctorProfile.maximumRequestsPerWeek) {
+        return fail(
+          res,
+          429,
+          "DOCTOR_REQUEST_LIMIT_REACHED",
+          "This doctor's weekly professional appointment request limit has been reached"
+        );
+      }
+    } else {
+      const acceptedConnection = await Connection.exists({
+        status: "ACCEPTED",
+        $or: [
+          {
+            requesterId: recipient._id,
+            recipientId: req.user.sub,
+          },
+          {
+            requesterId: req.user.sub,
+            recipientId: recipient._id,
+          },
+        ],
+      });
+
+      if (!acceptedConnection) {
+        return fail(
+          res,
+          403,
+          "ACCEPTED_CONNECTION_REQUIRED",
+          "Appointments may be requested only with an accepted connection"
+        );
+      }
+    }
 
     const row = await Appointment.create({
       requesterId: req.user.sub,
@@ -95,14 +421,20 @@ router.post(
       durationMinutes: parsed.data.durationMinutes,
       mode: parsed.data.mode,
       notes: parsed.data.notes || "",
+      purposeCategory: parsed.data.purposeCategory || "",
+      status: recipient.role === "DOCTOR" ? "REQUESTED" : "CONFIRMED",
     });
 
     const requesterProfile = await getDisplayProfile(req.user.sub, req.user.role);
     await notifyAppointment(
       row,
       parsed.data.recipientId,
-      "New appointment request",
-      `${requesterProfile.name} requested an appointment on ${new Date(parsed.data.scheduledAt).toLocaleString()}.`
+      recipient.role === "DOCTOR"
+        ? "New professional appointment request"
+        : "New appointment request",
+      recipient.role === "DOCTOR"
+        ? `${requesterProfile.name} requested a ${parsed.data.purposeCategory} meeting: ${parsed.data.notes}`
+        : `${requesterProfile.name} requested an appointment on ${new Date(parsed.data.scheduledAt).toLocaleString()}.`
     );
     created(res, await serialize(row));
   })
@@ -142,7 +474,7 @@ router.get(
 );
 
 const statusSchema = z.object({
-  status: z.enum(["RUNNING_LATE", "EMERGENCY", "CANCELLED", "COMPLETED", "CONFIRMED"]),
+  status: z.enum(["RUNNING_LATE", "EMERGENCY", "CANCELLED", "COMPLETED", "CONFIRMED", "DECLINED"]),
   disruptionReason: z
     .enum(["WEATHER", "HEALTH", "TRAVEL", "TRAFFIC", "EMERGENCY", "PREVIOUS_DELAY", "UNAVAILABLE", "OTHER"])
     .optional(),
@@ -158,6 +490,40 @@ router.patch(
     const parsed = statusSchema.safeParse(req.body);
     if (!parsed.success) return fail(res, 400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid input");
 
+    if (row.status === "REQUESTED") {
+      const isDoctorRecipient =
+        req.user.role === "DOCTOR" &&
+        row.recipientId.toString() === req.user.sub;
+      const isRequester =
+        row.requesterId.toString() === req.user.sub;
+
+      if (
+        (["CONFIRMED", "DECLINED"].includes(parsed.data.status) &&
+          !isDoctorRecipient) ||
+        (parsed.data.status === "DECLINED" &&
+          !isDoctorRecipient) ||
+        (parsed.data.status === "CANCELLED" &&
+          !isRequester) ||
+        !["CONFIRMED", "DECLINED", "CANCELLED"].includes(
+          parsed.data.status
+        )
+      ) {
+        return fail(
+          res,
+          403,
+          "REQUEST_DECISION_FORBIDDEN",
+          "Only the invited doctor may accept or decline a request; only its requester may cancel it"
+        );
+      }
+    } else if (parsed.data.status === "DECLINED") {
+      return fail(
+        res,
+        409,
+        "REQUEST_ALREADY_RESOLVED",
+        "Only a pending professional request can be declined"
+      );
+    }
+
     row.status = parsed.data.status;
     row.disruptionReason = parsed.data.disruptionReason || null;
     if (parsed.data.notes !== undefined) row.notes = parsed.data.notes;
@@ -169,6 +535,7 @@ router.patch(
       CANCELLED: "cancelled the appointment",
       COMPLETED: "marked the appointment as completed",
       CONFIRMED: "confirmed the appointment",
+      DECLINED: "declined the professional appointment request",
     };
     const actorProfile = await getDisplayProfile(req.user.sub, req.user.role);
     await notifyAppointment(
@@ -205,6 +572,14 @@ router.post(
     const row = await Appointment.findById(req.params.id);
     if (!row) return fail(res, 404, "NOT_FOUND", "Appointment not found");
     assertParticipant(row, req.user.sub);
+    if (row.status === "REQUESTED") {
+      return fail(
+        res,
+        409,
+        "REQUEST_NOT_ACCEPTED",
+        "A professional appointment can be rescheduled after the doctor accepts it"
+      );
+    }
     const parsed = rescheduleSchema.safeParse(req.body);
     if (!parsed.success) return fail(res, 400, "VALIDATION_ERROR", "Invalid reschedule payload");
 

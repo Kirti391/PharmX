@@ -6,8 +6,20 @@ const signupSchema = z.object({
   mobile: z.string().min(7).max(15),
   password: z.string().min(8, "Password must be at least 8 characters"),
   role: z.enum(PUBLIC_ROLES),
+  businessType: z.enum(["STOCKIST", "DISTRIBUTOR", "C_AND_F_AGENT"]).optional(),
   displayName: z.string().min(2),
-  location: z.string().optional(), // required for PHARMACY, checked in the service
+  location: z.string().trim().optional(),
+}).superRefine((signup, context) => {
+  if (
+    ["PHARMACY", "DISTRIBUTOR_STOCKIST", "DOCTOR"].includes(signup.role) &&
+    !signup.location
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["location"],
+      message: `${signup.role.replaceAll("_", " ")} signup requires a location`,
+    });
+  }
 });
 
 const loginSchema = z.object({

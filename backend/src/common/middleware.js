@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
 const env = require("../config/env");
 const { ApiError, fail } = require("./http");
+const { normalizeRole } = require("./constants");
+const User = require("../models/User");
 
 /** Wraps an async route handler so thrown/rejected errors reach the global error handler. */
 function asyncHandler(fn) {
@@ -15,13 +17,31 @@ function requireAuth(req, res, next) {
     return fail(res, 401, "UNAUTHENTICATED", "Missing or malformed Authorization header");
   }
   const token = header.slice("Bearer ".length);
+  let payload;
   try {
-    const payload = jwt.verify(token, env.jwtAccessSecret);
-    req.user = payload; // { sub, role }
-    next();
+    payload = jwt.verify(token, env.jwtAccessSecret);
   } catch {
     return fail(res, 401, "INVALID_TOKEN", "Access token is invalid or expired");
   }
+
+  User.findById(payload.sub)
+    .select("role status")
+    .then((user) => {
+      if (!user) {
+        return fail(res, 401, "ACCOUNT_NOT_FOUND", "Account no longer exists");
+      }
+      if (user.status !== "ACTIVE") {
+        return fail(
+          res,
+          403,
+          "ACCOUNT_RESTRICTED",
+          "This account is not active. Contact PharmX support for assistance."
+        );
+      }
+      req.user = { ...payload, role: normalizeRole(user.role) };
+      next();
+    })
+    .catch(next);
 }
 
 function requireRole(...roles) {
@@ -53,4 +73,10 @@ function errorHandler(err, req, res, next) {
   return fail(res, 500, "INTERNAL_ERROR", "Something went wrong");
 }
 
-module.exports = { asyncHandler, requireAuth, requireRole, errorHandler };
+module.exports = {
+  asyncHandler,
+  requireAuth,
+  requireRole,
+  errorHandler,
+  normalizeRole,
+};

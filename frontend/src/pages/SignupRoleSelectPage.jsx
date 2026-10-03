@@ -131,6 +131,13 @@ export default function SignupRoleSelectPage() {
               >
                 Sign in
               </Link>
+              <span aria-hidden="true">·</span>
+              <Link
+                to="/admin/login"
+                className="text-[#A4B3B6] hover:text-white transition-colors"
+              >
+                Administrator sign in
+              </Link>
             </div>
           </div>
 

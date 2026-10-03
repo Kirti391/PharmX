@@ -57,6 +57,9 @@ Open http://localhost:5173. Log in with any of the seeded demo accounts (passwor
 | Distributor | `distributor1@pharmx.dev` |
 
 Or sign up fresh from the landing page — since there's no OTP step, the account is usable immediately.
+Doctors and distributor/stockist accounts can register through the role selector. Administrator access
+is available at `/admin/login`; admin accounts are provisioned by an existing administrator or the
+development seed and cannot be created through public signup.
 
 ---
 
@@ -72,6 +75,12 @@ Or sign up fresh from the landing page — since there's no OTP step, the accoun
 - Connections (request/accept/decline)
 - Appointments: booking, running-late/emergency/cancel/complete status updates, full reschedule
   negotiation (propose → auto-suggested alternative slots → other party confirms)
+- Verified company-to-MR authorization scoped by product category, territory, and expiry
+- Role-scoped lead pipelines with audited stage changes and follow-up reminders for companies,
+  MRs, and verified distributors
+- Company-managed, draft/publish product catalogues and discoverable C&F agent profiles; no
+  ordering, inventory, payments, or prescription workflow
+- Consent-based professional appointment requests and communications for verified doctors
 - Real-time chat (Socket.IO) and real-time notification delivery
 - Admin console: user verification/reject/suspend, document review, audit log, analytics overview
 - File uploads (profile images, verification documents) served locally

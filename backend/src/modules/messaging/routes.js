@@ -3,6 +3,9 @@ const { asyncHandler, requireAuth } = require("../../common/middleware");
 const { ApiError, created, fail, ok } = require("../../common/http");
 const Conversation = require("../../models/Conversation");
 const Message = require("../../models/Message");
+const Appointment = require("../../models/Appointment");
+const Connection = require("../../models/Connection");
+const DoctorProfile = require("../../models/DoctorProfile");
 const User = require("../../models/User");
 const { getDisplayProfile } = require("../profiles/service");
 const { createNotification } = require("../notifications/service");
@@ -10,6 +13,77 @@ const { emitRealtime } = require("../../realtime/bus");
 
 const router = express.Router();
 router.use(requireAuth);
+
+async function canMessage(userIds) {
+  const users = await User.find({
+    _id: { $in: userIds },
+  }).select("_id role status");
+  if (
+    users.length !== userIds.length ||
+    users.some((user) => user.status !== "ACTIVE")
+  ) {
+    return false;
+  }
+  const doctor = users.find((user) => user.role === "DOCTOR");
+
+  if (doctor) {
+    const doctorProfile = await DoctorProfile.findOne({
+      userId: doctor._id,
+    }).select("blockedUserIds");
+    const otherUserId = userIds.find(
+      (userId) => userId !== doctor._id.toString()
+    );
+    const blocked = doctorProfile?.blockedUserIds?.some(
+      (blockedUserId) => blockedUserId.toString() === otherUserId
+    );
+    const acceptedAppointment = await Appointment.exists({
+      requesterId: { $in: userIds },
+      recipientId: { $in: userIds },
+      status: { $in: ["CONFIRMED", "RUNNING_LATE", "COMPLETED"] },
+    });
+
+    return (
+      Boolean(doctorProfile) &&
+      !blocked &&
+      Boolean(acceptedAppointment)
+    );
+  }
+
+  const acceptedConnection = await Connection.exists({
+    status: "ACCEPTED",
+    $or: [
+      {
+        requesterId: userIds[0],
+        recipientId: userIds[1],
+      },
+      {
+        requesterId: userIds[1],
+        recipientId: userIds[0],
+      },
+    ],
+  });
+
+  return Boolean(acceptedConnection);
+}
+
+async function assertMessagingPermission(userIds) {
+  if (await canMessage(userIds)) return;
+
+  const users = await User.find({
+    _id: { $in: userIds },
+  }).select("role");
+  const involvesDoctor = users.some((user) => user.role === "DOCTOR");
+
+  throw new ApiError(
+    403,
+    involvesDoctor
+      ? "DOCTOR_CONSENT_REQUIRED"
+      : "ACCEPTED_CONNECTION_REQUIRED",
+    involvesDoctor
+      ? "Doctor messaging is available only after an accepted professional appointment and may be blocked by the doctor"
+      : "Messaging requires an accepted connection"
+  );
+}
 
 async function serializeConversation(c, currentUserId) {
   const otherId = c.participantIds.find((id) => id.toString() !== currentUserId) || c.participantIds[0];
@@ -39,7 +113,23 @@ router.get(
   "/conversations",
   asyncHandler(async (req, res) => {
     const rows = await Conversation.find({ participantIds: req.user.sub }).sort({ lastMessageAt: -1 });
-    ok(res, await Promise.all(rows.map((c) => serializeConversation(c, req.user.sub))));
+    const permittedRows = [];
+    for (const conversation of rows) {
+      const participantIds = conversation.participantIds.map((id) =>
+        id.toString()
+      );
+      if (await canMessage(participantIds)) {
+        permittedRows.push(conversation);
+      }
+    }
+    ok(
+      res,
+      await Promise.all(
+        permittedRows.map((conversation) =>
+          serializeConversation(conversation, req.user.sub)
+        )
+      )
+    );
   })
 );
 
@@ -51,6 +141,11 @@ router.post(
     if (participantId === req.user.sub) return fail(res, 400, "VALIDATION_ERROR", "Cannot message yourself");
     const other = await User.findById(participantId);
     if (!other) return fail(res, 404, "NOT_FOUND", "Participant not found");
+
+    await assertMessagingPermission([
+      req.user.sub,
+      other._id.toString(),
+    ]);
 
     let convo = await Conversation.findOne({
       participantIds: { $all: [req.user.sub, participantId], $size: 2 },
@@ -73,7 +168,11 @@ router.get(
   asyncHandler(async (req, res) => {
     const conversation = await Conversation.findById(req.params.id);
     if (!conversation) return fail(res, 404, "NOT_FOUND", "Conversation not found");
-    assertParticipant(conversation, req.user.sub);
+    const participantIds = assertParticipant(
+      conversation,
+      req.user.sub
+    );
+    await assertMessagingPermission(participantIds);
 
     const cursor = req.query.cursor;
     const query = { conversationId: conversation._id };
@@ -90,6 +189,7 @@ router.post(
     const conversation = await Conversation.findById(req.params.id);
     if (!conversation) return fail(res, 404, "NOT_FOUND", "Conversation not found");
     const participantIds = assertParticipant(conversation, req.user.sub);
+    await assertMessagingPermission(participantIds);
 
     const { body, attachmentUrl } = req.body;
     if (!body || !body.trim()) return fail(res, 400, "VALIDATION_ERROR", "Message body is required");

@@ -54,6 +54,7 @@ function getTypeLabel(type) {
 
   if (normalized === "STOCKIST") return "Stockist";
   if (normalized === "DISTRIBUTOR") return "Distributor";
+  if (normalized === "C_AND_F_AGENT") return "C&F agent";
 
   return "Distributor / Stockist";
 }
@@ -317,6 +318,9 @@ export default function DiscoverStockistsPage() {
               <option value="STOCKIST">Stockists only</option>
               <option value="DISTRIBUTOR">
                 Distributors only
+              </option>
+              <option value="C_AND_F_AGENT">
+                C&amp;F agents only
               </option>
             </Select>
           </div>

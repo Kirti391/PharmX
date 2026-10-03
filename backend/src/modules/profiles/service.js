@@ -3,6 +3,10 @@ const MRProfile = require("../../models/MRProfile");
 const PharmaCompanyProfile = require("../../models/PharmaCompanyProfile");
 const PharmacyProfile = require("../../models/PharmacyProfile");
 const StockistProfile = require("../../models/StockistProfile");
+const DoctorProfile = require("../../models/DoctorProfile");
+const User = require("../../models/User");
+const VerificationDocument = require("../../models/VerificationDocument");
+const { normalizeRole } = require("../../common/constants");
 
 // ============================================================
 // MR
@@ -19,7 +23,6 @@ function serializeMR(p) {
     languages: p.languages,
     specializations: p.specializations,
     territories: p.territories,
-    companiesRepresented: p.companiesRepresented,
     workMode: p.workMode,
     isIndependent: p.isIndependent,
     availabilityStatus: p.availabilityStatus,
@@ -48,9 +51,28 @@ async function getMRProfileById(id) {
 }
 
 async function updateMRProfile(userId, patch) {
+  const allowedFields = [
+    "fullName",
+    "profileImageUrl",
+    "experienceYears",
+    "bio",
+    "languages",
+    "specializations",
+    "territories",
+    "workMode",
+    "isIndependent",
+    "availabilityStatus",
+  ];
+  const safePatch = {};
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(patch, field)) {
+      safePatch[field] = patch[field];
+    }
+  }
+
   const p = await MRProfile.findOneAndUpdate(
     { userId },
-    { $set: patch },
+    { $set: safePatch },
     {
       new: true,
       runValidators: true,
@@ -66,10 +88,6 @@ async function updateMRProfile(userId, patch) {
 
 async function listMRs({ territory, specialization, workMode, excludeUserId }) {
   const query = {};
-
-  if (excludeUserId) {
-    query.userId = { $ne: excludeUserId };
-  }
 
   if (workMode) {
     query.workMode = workMode;
@@ -89,8 +107,25 @@ async function listMRs({ territory, specialization, workMode, excludeUserId }) {
     };
   }
 
-  const rows = await MRProfile
-    .find(query)
+  const [verifiedUsers, activeUsers] = await Promise.all([
+    VerificationDocument.distinct("userId", {
+      docType: "ID_PROOF",
+      status: "APPROVED",
+    }),
+    User.distinct("_id", { status: "ACTIVE" }),
+  ]);
+  const activeIds = new Set(
+    activeUsers.map((id) => id.toString())
+  );
+  query.userId = {
+    $in: verifiedUsers.filter(
+      (id) =>
+        activeIds.has(id.toString()) &&
+        id.toString() !== String(excludeUserId || "")
+    ),
+  };
+
+  const rows = await MRProfile.find(query)
     .sort({ updatedAt: -1 });
 
   return rows.map(serializeMR);
@@ -100,7 +135,7 @@ async function listMRs({ territory, specialization, workMode, excludeUserId }) {
 // Pharma Company
 // ============================================================
 
-function serializePharma(p) {
+function serializePharma(p, includePrivate = false) {
   return {
     id: p._id,
     userId: p.userId,
@@ -114,8 +149,12 @@ function serializePharma(p) {
     productCategories: p.productCategories,
 
     website: p.website,
-    contactPersonName: p.contactPersonName,
-    contactPersonDesignation: p.contactPersonDesignation,
+    ...(includePrivate
+      ? {
+          contactPersonName: p.contactPersonName,
+          contactPersonDesignation: p.contactPersonDesignation,
+        }
+      : {}),
 
     businessVerified: p.businessVerified,
     verificationStatus: p.verificationStatus,
@@ -136,7 +175,7 @@ async function getPharmaProfileByUserId(userId) {
     );
   }
 
-  return serializePharma(p);
+  return serializePharma(p, true);
 }
 
 async function getPharmaProfileById(id) {
@@ -195,11 +234,10 @@ async function updatePharmaProfile(userId, patch) {
 }
 
 async function listPharmaCompanies({ territory, category, excludeUserId }) {
-  const query = {};
-
-  if (excludeUserId) {
-    query.userId = { $ne: excludeUserId };
-  }
+  const query = {
+    businessVerified: true,
+    verificationStatus: "VERIFIED",
+  };
 
   if (territory) {
     query.areasOfOperation = {
@@ -215,18 +253,40 @@ async function listPharmaCompanies({ territory, category, excludeUserId }) {
     };
   }
 
-  const rows = await PharmaCompanyProfile
-    .find(query)
-    .sort({ updatedAt: -1 });
+  const currentRegistrationUsers = await VerificationDocument.distinct(
+    "userId",
+    {
+      docType: "BUSINESS_REG",
+      status: "APPROVED",
+      $or: [{ expiryDate: null }, { expiryDate: { $gt: new Date() } }],
+    }
+  );
+  query.userId = {
+    $in: currentRegistrationUsers,
+    ...(excludeUserId ? { $ne: excludeUserId } : {}),
+  };
 
-  return rows.map(serializePharma);
+  const rows = await PharmaCompanyProfile.find(query)
+    .sort({ updatedAt: -1 });
+  const activeUsers = new Set(
+    (
+      await User.distinct("_id", {
+        _id: { $in: rows.map((row) => row.userId) },
+        status: "ACTIVE",
+      })
+    ).map((id) => id.toString())
+  );
+
+  return rows
+    .filter((row) => activeUsers.has(row.userId.toString()))
+    .map(serializePharma);
 }
 
 // ============================================================
 // Pharmacy
 // ============================================================
 
-function serializePharmacy(p) {
+function serializePharmacy(p, includePrivate = false) {
   return {
     id: p._id,
     userId: p.userId,
@@ -251,19 +311,21 @@ function serializePharmacy(p) {
     state: p.state,
     pinCode: p.pinCode,
     serviceArea: p.serviceArea,
-    exactAddress: p.showExactAddress ? p.exactAddress : undefined,
-    showExactAddress: p.showExactAddress,
-    mapLocation: p.mapLocation,
-
-    // Legal / licensing
-    drugLicenceNumber: p.drugLicenceNumber,
-    licenceType: p.licenceType,
-    licenceIssueDate: p.licenceIssueDate,
-    licenceExpiryDate: p.licenceExpiryDate,
-    licensingAuthority: p.licensingAuthority,
-    gstin: p.gstin,
-    businessRegistration: p.businessRegistration,
-    pharmacistDetails: p.pharmacistDetails,
+    ...(includePrivate
+      ? {
+          exactAddress: p.exactAddress,
+          showExactAddress: p.showExactAddress,
+          mapLocation: p.mapLocation,
+          drugLicenceNumber: p.drugLicenceNumber,
+          licenceType: p.licenceType,
+          licenceIssueDate: p.licenceIssueDate,
+          licenceExpiryDate: p.licenceExpiryDate,
+          licensingAuthority: p.licensingAuthority,
+          gstin: p.gstin,
+          businessRegistration: p.businessRegistration,
+          pharmacistDetails: p.pharmacistDetails,
+        }
+      : {}),
 
     // Verification
     businessVerified: p.businessVerified,
@@ -271,37 +333,35 @@ function serializePharmacy(p) {
     lastVerifiedDate: p.lastVerifiedDate,
     nextVerificationDate: p.nextVerificationDate,
 
-    // Do not expose verification document URLs
-    // through the normal public profile response.
-    verificationDocuments: (p.verificationDocuments || []).map((doc) => ({
-      name: doc.name,
-      type: doc.type,
-      uploadedAt: doc.uploadedAt,
-      status: doc.status,
-    })),
-
-    verificationNotes: p.verificationNotes,
+    ...(includePrivate
+      ? {
+          verificationDocuments: p.verificationDocuments,
+          verificationNotes: p.verificationNotes,
+        }
+      : {}),
 
     // Procurement
     interestedCategories: p.interestedCategories,
-    preferredSuppliers: p.preferredSuppliers,
     newCompanyInterest: p.newCompanyInterest,
     alternativeBrandAcceptance: p.alternativeBrandAcceptance,
-    demandRange: p.demandRange,
     deliveryPreferences: p.deliveryPreferences,
     coldChainRequirement: p.coldChainRequirement,
     urgentSupplyRequirement: p.urgentSupplyRequirement,
 
     // Communication
-    preferredCommunicationMethod: p.preferredCommunicationMethod,
-    preferredMRVisitHours: p.preferredMRVisitHours,
-    noVisitDays: p.noVisitDays,
+    ...(includePrivate
+      ? {
+          preferredSuppliers: p.preferredSuppliers,
+          demandRange: p.demandRange,
+          preferredCommunicationMethod: p.preferredCommunicationMethod,
+          preferredMRVisitHours: p.preferredMRVisitHours,
+          noVisitDays: p.noVisitDays,
+          privacy: p.privacy,
+        }
+      : {}),
 
     // Existing appointment field
     preferredAppointmentWindows: p.preferredAppointmentWindows,
-
-    // Privacy
-    privacy: p.privacy,
 
     updatedAt: p.updatedAt,
   };
@@ -318,7 +378,7 @@ async function getPharmacyProfileByUserId(userId) {
     );
   }
 
-  return serializePharmacy(p);
+  return serializePharmacy(p, true);
 }
 
 async function getPharmacyProfileById(id) {
@@ -363,7 +423,6 @@ async function updatePharmacyProfile(userId, patch) {
     "drugLicenceNumber",
     "licenceType",
     "licenceIssueDate",
-    "licenceExpiryDate",
     "licensingAuthority",
     "gstin",
     "businessRegistration",
@@ -432,7 +491,10 @@ async function updatePharmacyProfile(userId, patch) {
 }
 
 async function listPharmacies({ territory, category, excludeUserId }) {
-  const query = {};
+  const query = {
+    businessVerified: true,
+    verificationStatus: "VERIFIED",
+  };
 
   if (excludeUserId) {
     query.userId = { $ne: excludeUserId };
@@ -452,11 +514,25 @@ async function listPharmacies({ territory, category, excludeUserId }) {
     };
   }
 
-  const rows = await PharmacyProfile
-    .find(query)
+  const rows = await PharmacyProfile.find(query)
     .sort({ updatedAt: -1 });
+  const activeUsers = new Set(
+    (
+      await User.distinct("_id", {
+        _id: { $in: rows.map((row) => row.userId) },
+        status: "ACTIVE",
+      })
+    ).map((id) => id.toString())
+  );
 
-  return rows.map(serializePharmacy);
+  const now = new Date();
+  return rows
+    .filter(
+      (row) =>
+        activeUsers.has(row.userId.toString()) &&
+        (!row.licenceExpiryDate || row.licenceExpiryDate > now)
+    )
+    .map(serializePharmacy);
 }
 
 // ============================================================
@@ -473,6 +549,7 @@ function serializeStockist(p) {
     productCategories: p.productCategories,
     associatedCompanies: p.associatedCompanies,
     businessVerified: p.businessVerified,
+    licenceExpiryDate: p.licenceExpiryDate,
     updatedAt: p.updatedAt,
   };
 }
@@ -506,9 +583,22 @@ async function getStockistProfileById(id) {
 }
 
 async function updateStockistProfile(userId, patch) {
+  const allowedFields = [
+    "companyName",
+    "type",
+    "serviceAreas",
+    "productCategories",
+    "associatedCompanies",
+  ];
+  const safePatch = {};
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(patch, field)) {
+      safePatch[field] = patch[field];
+    }
+  }
   const p = await StockistProfile.findOneAndUpdate(
     { userId },
-    { $set: patch },
+    { $set: safePatch },
     {
       new: true,
       runValidators: true,
@@ -527,7 +617,7 @@ async function updateStockistProfile(userId, patch) {
 }
 
 async function listStockists({ territory, category, type, excludeUserId }) {
-  const query = {};
+  const query = { businessVerified: true };
 
   if (excludeUserId) {
     query.userId = { $ne: excludeUserId };
@@ -551,11 +641,144 @@ async function listStockists({ territory, category, type, excludeUserId }) {
     };
   }
 
-  const rows = await StockistProfile
-    .find(query)
+  const rows = await StockistProfile.find(query)
     .sort({ updatedAt: -1 });
+  const activeUsers = new Set(
+    (
+      await User.distinct("_id", {
+        _id: { $in: rows.map((row) => row.userId) },
+        status: "ACTIVE",
+      })
+    ).map((id) => id.toString())
+  );
 
-  return rows.map(serializeStockist);
+  const now = new Date();
+  return rows
+    .filter(
+      (row) =>
+        activeUsers.has(row.userId.toString()) &&
+        (!row.licenceExpiryDate || row.licenceExpiryDate > now)
+    )
+    .map(serializeStockist);
+}
+
+// ============================================================
+// Doctor
+// ============================================================
+
+function serializeDoctor(profile) {
+  const registrationStatus =
+    profile.registrationStatus === "VERIFIED" &&
+    profile.reVerificationDate &&
+    profile.reVerificationDate <= new Date()
+      ? "EXPIRED"
+      : profile.registrationStatus;
+  return {
+    id: profile._id,
+    userId: profile.userId,
+    fullName: profile.fullName,
+    specialty: profile.specialty,
+    subspecialty: profile.subspecialty,
+    qualification: profile.qualification,
+    registrationCouncil: profile.registrationCouncil,
+    registrationNumber: profile.registrationNumber,
+    registrationStatus,
+    clinicHospitalAffiliation: profile.clinicHospitalAffiliation,
+    location: profile.location,
+    languages: profile.languages,
+    professionalInterests: profile.professionalInterests,
+    profileImageUrl: profile.profileImageUrl,
+    acceptsMRRequests: profile.acceptsMRRequests,
+    acceptsCompanyInformation: profile.acceptsCompanyInformation,
+    acceptedCategories: profile.acceptedCategories,
+    communicationModes: profile.communicationModes,
+    appointmentDurationMinutes: profile.appointmentDurationMinutes,
+    maximumRequestsPerWeek: profile.maximumRequestsPerWeek,
+    businessVerified: profile.businessVerified,
+    verificationDate: profile.verificationDate,
+    reVerificationDate: profile.reVerificationDate,
+    updatedAt: profile.updatedAt,
+  };
+}
+
+async function getDoctorProfileByUserId(userId) {
+  const profile = await DoctorProfile.findOne({ userId });
+
+  if (!profile) {
+    throw new ApiError(404, "NOT_FOUND", "Doctor profile not found");
+  }
+
+  return serializeDoctor(profile);
+}
+
+async function updateDoctorProfile(userId, patch) {
+  const profile = await DoctorProfile.findOne({ userId });
+  if (!profile) {
+    throw new ApiError(404, "NOT_FOUND", "Doctor profile not found");
+  }
+
+  const allowedFields = [
+    "fullName",
+    "specialty",
+    "subspecialty",
+    "qualification",
+    "registrationCouncil",
+    "registrationNumber",
+    "clinicHospitalAffiliation",
+    "location",
+    "languages",
+    "professionalInterests",
+    "acceptsMRRequests",
+    "acceptsCompanyInformation",
+    "acceptedCategories",
+    "communicationModes",
+    "appointmentDurationMinutes",
+    "maximumRequestsPerWeek",
+  ];
+  const registrationFields = [
+    "registrationCouncil",
+    "registrationNumber",
+  ];
+  const registrationLocked = ["PENDING", "VERIFIED"].includes(
+    profile.registrationStatus
+  );
+  const changedRegistrationField = registrationFields.some(
+    (field) =>
+      Object.prototype.hasOwnProperty.call(patch, field) &&
+      String(patch[field] || "").trim() !==
+        String(profile[field] || "").trim()
+  );
+
+  if (registrationLocked && changedRegistrationField) {
+    throw new ApiError(
+      409,
+      "REGISTRATION_CHANGE_REQUIRES_REVIEW",
+      "Registration details cannot be changed while verification is pending or approved. Contact PharmX support for a correction."
+    );
+  }
+
+  const safePatch = {};
+
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(patch, field)) {
+      safePatch[field] = patch[field];
+    }
+  }
+
+  const updatedProfile = await DoctorProfile.findOneAndUpdate(
+    { userId },
+    { $set: safePatch },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  if (!updatedProfile) {
+    throw new ApiError(404, "NOT_FOUND", "Doctor profile not found");
+  }
+
+  return serializeDoctor(updatedProfile);
 }
 
 // ============================================================
@@ -567,55 +790,66 @@ async function listStockists({ territory, category, type, excludeUserId }) {
  * to render a display name for any user.
  */
 async function getDisplayProfile(userId, role) {
-  try {
-    if (role === "MR" || role === "INDEPENDENT_MR") {
-      const p = await getMRProfileByUserId(userId);
+  role = normalizeRole(role);
+  if (role === "MR") {
+    const p = await getMRProfileByUserId(userId);
 
-      return {
-        name: p.fullName,
-        imageUrl: p.profileImageUrl,
-        role,
-      };
-    }
-
-    if (role === "PHARMA_COMPANY") {
-      const p = await getPharmaProfileByUserId(userId);
-
-      return {
-        name: p.companyName,
-        imageUrl: p.logoUrl,
-        role,
-      };
-    }
-
-    if (role === "PHARMACY") {
-      const p = await getPharmacyProfileByUserId(userId);
-
-      return {
-        name: p.displayName || p.pharmacyName,
-        imageUrl: p.profileImage || null,
-        role,
-      };
-    }
-
-    if (role === "STOCKIST" || role === "DISTRIBUTOR") {
-      const p = await getStockistProfileByUserId(userId);
-
-      return {
-        name: p.companyName,
-        imageUrl: null,
-        role,
-      };
-    }
-  } catch {
-    // Profile missing — fall through.
+    return {
+      name: p.fullName,
+      imageUrl: p.profileImageUrl,
+      role,
+    };
   }
 
-  return {
-    name: "Admin",
-    imageUrl: null,
-    role,
-  };
+  if (role === "PHARMA_COMPANY") {
+    const p = await getPharmaProfileByUserId(userId);
+
+    return {
+      name: p.companyName,
+      imageUrl: p.logoUrl,
+      role,
+    };
+  }
+
+  if (role === "PHARMACY") {
+    const p = await getPharmacyProfileByUserId(userId);
+
+    return {
+      name: p.displayName || p.pharmacyName,
+      imageUrl: p.profileImage || null,
+      role,
+    };
+  }
+
+  if (role === "DISTRIBUTOR_STOCKIST") {
+    const p = await getStockistProfileByUserId(userId);
+
+    return {
+      name: p.companyName,
+      imageUrl: null,
+      role,
+    };
+  }
+
+  if (role === "DOCTOR") {
+    const p = await getDoctorProfileByUserId(userId);
+
+    return {
+      name: p.fullName,
+      imageUrl: p.profileImageUrl,
+      role,
+    };
+  }
+
+  if (role === "ADMIN") {
+    return { name: "Admin", imageUrl: null, role };
+  }
+
+  throw new ApiError(
+    400,
+    "UNSUPPORTED_ROLE",
+    `No display profile is available for role ${role || "unknown"}`
+  );
 }
 
 // ============================================================
@@ -646,6 +880,10 @@ module.exports = {
   getStockistProfileById,
   updateStockistProfile,
   listStockists,
+
+  // Doctor
+  getDoctorProfileByUserId,
+  updateDoctorProfile,
 
   // Generic
   getDisplayProfile,

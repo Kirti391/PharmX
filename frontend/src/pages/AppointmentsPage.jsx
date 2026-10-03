@@ -5,20 +5,38 @@ import { useAuthStore } from "../store/authStore";
 import { Card, EmptyState, Input, Label, Loader, Select, StatusBadge, TextArea } from "../components/ui";
 import { Button } from "../components/ui";
 import { format } from "date-fns";
+import { PRODUCT_CATEGORIES } from "../lib/constants";
 
 export default function AppointmentsPage() {
   const [search] = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const [appointments, setAppointments] = useState(null);
   const [connections, setConnections] = useState([]);
+  const [doctors, setDoctors] = useState([]);
   const [showForm, setShowForm] = useState(!!search.get("with"));
 
   const [recipientId, setRecipientId] = useState(search.get("with") || "");
   const [scheduledAt, setScheduledAt] = useState("");
   const [mode, setMode] = useState("PHYSICAL");
+  const [durationMinutes, setDurationMinutes] = useState(30);
+  const [purposeCategory, setPurposeCategory] = useState(search.get("category") || "");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const canRequestAppointment = [
+    "PHARMACY",
+    "MR",
+    "PHARMA_COMPANY",
+    "DISTRIBUTOR_STOCKIST",
+  ].includes(user?.role);
+
+  const selectedDoctor = doctors.find(
+    (doctor) => doctor.userId === recipientId
+  );
+  const selectedMode =
+    selectedDoctor?.communicationModes?.includes(mode)
+      ? mode
+      : selectedDoctor?.communicationModes?.[0] || mode;
 
   function loadAppointments() {
     http.get("/appointments").then(setAppointments).catch(() => setAppointments([]));
@@ -27,7 +45,20 @@ export default function AppointmentsPage() {
   useEffect(() => {
     loadAppointments();
     http.get("/connections").then(setConnections).catch(() => setConnections([]));
-  }, []);
+    if (["MR", "PHARMA_COMPANY"].includes(user?.role)) {
+      http
+        .get("/discover/doctors")
+        .then((result) => setDoctors(Array.isArray(result) ? result : []))
+        .catch((requestError) =>
+          setError(
+            apiErrorMessage(
+              requestError,
+              "Unable to load doctors accepting professional requests."
+            )
+          )
+        );
+    }
+  }, [user?.role]);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -36,12 +67,22 @@ export default function AppointmentsPage() {
     try {
       await http.post("/appointments", {
         recipientId,
+        ...(selectedDoctor?.companyId
+          ? { companyId: selectedDoctor.companyId }
+          : {}),
         scheduledAt: new Date(scheduledAt).toISOString(),
-        mode,
+        durationMinutes: selectedDoctor
+          ? selectedDoctor.appointmentDurationMinutes
+          : Number(durationMinutes),
+        mode: selectedMode,
         notes: notes || undefined,
+        purposeCategory: selectedDoctor
+          ? purposeCategory
+          : undefined,
       });
       setShowForm(false);
       setNotes("");
+      setPurposeCategory("");
       loadAppointments();
     } catch (err) {
       setError(apiErrorMessage(err, "Failed to book appointment"));
@@ -56,15 +97,29 @@ export default function AppointmentsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl font-bold text-navy">Appointments</h1>
-        <Button onClick={() => setShowForm((s) => !s)}>{showForm ? "Cancel" : "Book appointment"}</Button>
+        {canRequestAppointment && (
+          <Button onClick={() => setShowForm((s) => !s)}>{showForm ? "Cancel" : "Book appointment"}</Button>
+        )}
       </div>
 
-      {showForm && (
+      {showForm && canRequestAppointment && (
         <Card className="mb-6">
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
               <Label>With</Label>
-              <Select value={recipientId} onChange={(e) => setRecipientId(e.target.value)} required>
+              <Select
+                value={recipientId}
+                onChange={(event) => {
+                  const nextRecipientId = event.target.value;
+                  setRecipientId(nextRecipientId);
+                  if (!doctors.some((doctor) => doctor.userId === nextRecipientId)) {
+                    setMode("PHYSICAL");
+                    setDurationMinutes(30);
+                    setPurposeCategory("");
+                  }
+                }}
+                required
+              >
                 <option value="">Select a connection…</option>
                 {connections.map((c) => {
                   const other = c.requester?.userId === user?.id ? c.recipient : c.requester;
@@ -75,8 +130,19 @@ export default function AppointmentsPage() {
                     </option>
                   );
                 })}
+                {doctors.map((doctor) => (
+                  <option key={doctor.userId} value={doctor.userId}>
+                    Dr. {doctor.fullName} ({doctor.specialty || "verified doctor"})
+                  </option>
+                ))}
               </Select>
-              {connections.length === 0 && <p className="text-xs text-taupe mt-1">Connect with someone first from Discover.</p>}
+              {connections.length === 0 && doctors.length === 0 && (
+                <p className="text-xs text-taupe mt-1">
+                  {user?.role === "DOCTOR"
+                    ? "Professional appointment requests will appear here for your review."
+                    : "Connect with a relevant professional first. Doctors are listed only when verified and opted in."}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -85,15 +151,86 @@ export default function AppointmentsPage() {
               </div>
               <div>
                 <Label>Mode</Label>
-                <Select value={mode} onChange={(e) => setMode(e.target.value)}>
-                  <option value="PHYSICAL">Physical visit</option>
-                  <option value="VIDEO">Video call</option>
+                <Select
+                  value={selectedMode}
+                  onChange={(e) => setMode(e.target.value)}
+                  required
+                >
+                  {(
+                    selectedDoctor?.communicationModes?.length
+                      ? selectedDoctor.communicationModes
+                      : ["PHYSICAL", "VIDEO"]
+                  ).map((item) => (
+                    <option key={item} value={item}>
+                      {item === "VIDEO" ? "Video call" : "Physical visit"}
+                    </option>
+                  ))}
                 </Select>
               </div>
             </div>
+            {selectedDoctor ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label>Therapeutic category</Label>
+                  <Select
+                    required
+                    value={purposeCategory}
+                    onChange={(event) =>
+                      setPurposeCategory(event.target.value)
+                    }
+                  >
+                    <option value="">Select a category</option>
+                    {(selectedDoctor.acceptedCategories?.length
+                      ? selectedDoctor.acceptedCategories
+                      : PRODUCT_CATEGORIES
+                    ).map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label>Proposed duration (minutes)</Label>
+                  <Input
+                    type="number"
+                    readOnly
+                    value={selectedDoctor.appointmentDurationMinutes}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <Label>Duration (minutes)</Label>
+                <Input
+                  type="number"
+                  min="5"
+                  max="240"
+                  value={durationMinutes}
+                  onChange={(event) =>
+                    setDurationMinutes(event.target.value)
+                  }
+                />
+              </div>
+            )}
             <div>
-              <Label>Notes (optional)</Label>
-              <TextArea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <Label>
+                {selectedDoctor
+                  ? "Professional purpose (required)"
+                  : "Notes (optional)"}
+              </Label>
+              <TextArea
+                required={Boolean(selectedDoctor)}
+                minLength={selectedDoctor ? 10 : undefined}
+                rows={3}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={
+                  selectedDoctor
+                    ? "Describe the approved scientific or professional information to be discussed."
+                    : ""
+                }
+              />
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <Button type="submit" loading={loading}>
@@ -106,7 +243,7 @@ export default function AppointmentsPage() {
       {!appointments ? (
         <Loader />
       ) : sorted.length === 0 ? (
-        <EmptyState title="No appointments yet" subtitle="Book one with any of your connections." />
+        <EmptyState title="No appointments yet" subtitle="Arrange meetings with accepted connections or submit a purpose-specific request to an opted-in doctor." />
       ) : (
         <div className="space-y-3">
           {sorted.map((a) => {

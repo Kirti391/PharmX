@@ -5,6 +5,12 @@ const verificationDocumentSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     docType: { type: String, enum: DOC_TYPES, required: true },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PharmaCompanyProfile",
+      default: null,
+    },
+    expiryDate: { type: Date, default: null, index: true },
     fileUrl: { type: String, required: true },
     status: { type: String, enum: DOC_STATUSES, default: "PENDING" },
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },

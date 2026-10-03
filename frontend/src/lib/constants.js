@@ -29,5 +29,7 @@ export const ROLE_LABELS = {
   PHARMACY: "Pharmacy",
   STOCKIST: "Stockist",
   DISTRIBUTOR: "Distributor",
+  DISTRIBUTOR_STOCKIST: "Distributor / Stockist",
+  DOCTOR: "Doctor",
   ADMIN: "Admin",
 };

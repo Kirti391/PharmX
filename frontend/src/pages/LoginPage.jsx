@@ -7,7 +7,7 @@ import { Button, Input, Label } from "../components/ui";
 
 import logo from "../assets/pharmunis logo.png";
 
-export default function LoginPage() {
+export default function LoginPage({ adminPortal = false }) {
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
 
@@ -26,6 +26,13 @@ export default function LoginPage() {
         email,
         password,
       });
+
+      if (adminPortal && result.user.role !== "ADMIN") {
+        await http.post("/auth/logout", {
+          refreshToken: result.tokens.refreshToken,
+        });
+        throw new Error("This portal is for provisioned administrator accounts only.");
+      }
 
       setSession(
         result.user,
@@ -70,21 +77,23 @@ export default function LoginPage() {
             className="text-[#D83F87] text-[11px] uppercase tracking-[0.28em] mb-3"
             style={{ fontFamily: "Fauna One" }}
           >
-            Welcome back
+            {adminPortal ? "Administration" : "Welcome back"}
           </p>
 
           <h1
             className="text-[#2A1B3D] text-[36px] leading-tight"
             style={{ fontFamily: "Cinzel" }}
           >
-            Sign in
+            {adminPortal ? "Administrator sign in" : "Sign in"}
           </h1>
 
           <p
             className="mt-3 text-[#A4B3B6] text-sm"
             style={{ fontFamily: "Fauna One" }}
           >
-            Access your professional workspace
+            {adminPortal
+              ? "Sign in with an administrator account provisioned by PharmUnis."
+              : "Access your professional workspace"}
           </p>
         </div>
 
@@ -165,7 +174,7 @@ export default function LoginPage() {
         </form>
 
         {/* Signup */}
-        <div className="text-center mt-8">
+        {!adminPortal && <div className="text-center mt-8">
           <p
             className="text-sm text-[#A4B3B6]"
             style={{ fontFamily: "Fauna One" }}
@@ -182,6 +191,26 @@ export default function LoginPage() {
               Create an account
             </Link>
           </p>
+        </div>}
+
+        <div className="mt-5 text-center">
+          {adminPortal ? (
+            <Link
+              to="/login"
+              className="text-sm text-[#44318D] hover:text-[#D83F87]"
+              style={{ fontFamily: "Fauna One" }}
+            >
+              Return to professional sign in
+            </Link>
+          ) : (
+            <Link
+              to="/admin/login"
+              className="text-xs text-[#A4B3B6] hover:text-[#D83F87]"
+              style={{ fontFamily: "Fauna One" }}
+            >
+              Administrator sign in
+            </Link>
+          )}
         </div>
 
         {/* Minimal palette detail */}

@@ -25,7 +25,9 @@
 
   /* Brand typography */
   --font-display: "Cinzel", serif;
+  --font-editorial: "Cinzel", serif;
   --font-body: "Fauna One", serif;
+  --font-script: "Great Vibes", cursive;
   --font-nav: "Unica One", sans-serif;
   --font-support: "Philosopher", sans-serif;
 }
@@ -74,6 +76,14 @@ body {
 
 .font-support {
   font-family: "Philosopher", sans-serif;
+}
+
+.workspace-label {
+  font-family: "Unica One", sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  line-height: 1.4;
+  text-transform: uppercase;
 }
 
 /* =========================================================
@@ -375,4 +385,3 @@ body {
     animation: none !important;
   }
 }
-

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { http, apiErrorMessage } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
-import { Card, Label, Loader, Select, StatusBadge } from "../components/ui";
+import { Card, Label, Loader, Select, StatusBadge, TextArea } from "../components/ui";
 import { Button } from "../components/ui";
 import { DISRUPTION_REASONS } from "../lib/constants";
 import { format } from "date-fns";
@@ -14,6 +14,10 @@ export default function AppointmentDetailPage() {
   const [reason, setReason] = useState(DISRUPTION_REASONS[0]);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportReason, setReportReason] = useState("UNSAFE_CONDUCT");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportSubmitted, setReportSubmitted] = useState(false);
 
   function load() {
     http.get(`/appointments/${id}`).then(setAppointment).catch(() => {});
@@ -23,7 +27,25 @@ export default function AppointmentDetailPage() {
   if (!appointment) return <Loader />;
 
   const other = appointment.requester?.userId === user?.id ? appointment.recipient : appointment.requester;
-  const isActive = !["CANCELLED", "COMPLETED"].includes(appointment.status);
+  const isDoctorRecipient =
+    appointment.status === "REQUESTED" &&
+    user?.role === "DOCTOR" &&
+    appointment.recipient?.userId === user?.id;
+  const isRequestOwner =
+    appointment.status === "REQUESTED" &&
+    appointment.requester?.userId === user?.id;
+  const isActive = ![
+    "REQUESTED",
+    "DECLINED",
+    "CANCELLED",
+    "COMPLETED",
+  ].includes(appointment.status);
+  const canBlockOther =
+    user?.role === "DOCTOR" &&
+    Boolean(other?.userId) &&
+    !["DECLINED", "CANCELLED", "COMPLETED"].includes(
+      appointment.status
+    );
 
   async function setStatus(status, disruptionReason) {
     setError(null);
@@ -67,6 +89,70 @@ export default function AppointmentDetailPage() {
     }
   }
 
+  async function blockOther() {
+    if (!other?.userId) return;
+    if (
+      !window.confirm(
+        "Block this contact? They will no longer be able to find you, request appointments, or message you."
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    setBusy(true);
+    try {
+      await http.post("/profiles/doctor/blocked-users", {
+        targetUserId: other.userId,
+      });
+      if (appointment.status === "REQUESTED") {
+        setAppointment(
+          await http.patch(`/appointments/${id}/status`, {
+            status: "DECLINED",
+          })
+        );
+      } else if (isActive) {
+        setAppointment(
+          await http.patch(`/appointments/${id}/status`, {
+            status: "CANCELLED",
+          })
+        );
+      }
+    } catch (requestError) {
+      setError(
+        apiErrorMessage(
+          requestError,
+          "Unable to block this professional contact."
+        )
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitReport(event) {
+    event.preventDefault();
+    if (!other?.userId) return;
+
+    setError(null);
+    setBusy(true);
+    try {
+      await http.post("/reports", {
+        targetUserId: other.userId,
+        reason: reportReason,
+        details: reportDetails,
+      });
+      setReportSubmitted(true);
+      setShowReportForm(false);
+    } catch (requestError) {
+      setError(
+        apiErrorMessage(requestError, "Unable to submit your report.")
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const iProposedReschedule = appointment.pendingReschedule?.proposedByUserId === user?.id;
 
   return (
@@ -82,13 +168,153 @@ export default function AppointmentDetailPage() {
           </div>
           <StatusBadge status={appointment.status} />
         </div>
-        {appointment.notes && <p className="text-sm text-taupedark mt-4 border-t border-taupedark/10 pt-4">{appointment.notes}</p>}
+        {appointment.purposeCategory && (
+          <p className="mt-4 border-t border-taupedark/10 pt-4 text-xs font-medium text-purple">
+            Professional category: {appointment.purposeCategory}
+          </p>
+        )}
+        {appointment.notes && <p className="text-sm text-taupedark mt-2">{appointment.notes}</p>}
         {appointment.disruptionReason && (
           <p className="text-sm text-red-500 mt-3">Disruption reason: {appointment.disruptionReason.toLowerCase().replaceAll("_", " ")}</p>
         )}
       </Card>
 
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+      {isDoctorRecipient && (
+        <Card className="mb-6">
+          <h2 className="mb-2 font-display font-semibold text-navy">
+            Review professional request
+          </h2>
+          <p className="mb-4 text-sm leading-6 text-taupe">
+            Review the sender, stated category and purpose before accepting.
+            No appointment is confirmed until you accept.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={busy}
+              onClick={() => setStatus("CONFIRMED")}
+            >
+              Accept request
+            </Button>
+            <Button
+              variant="danger"
+              disabled={busy}
+              onClick={() => setStatus("DECLINED")}
+            >
+              Decline request
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {canBlockOther && (
+        <Card className="mb-6">
+          <h2 className="mb-2 font-display font-semibold text-navy">
+            Safety controls
+          </h2>
+          <p className="mb-4 text-sm leading-6 text-taupe">
+            Blocking this contact also declines a pending request or cancels
+            this active appointment.
+          </p>
+          <Button
+            variant="danger"
+            disabled={busy}
+            onClick={blockOther}
+          >
+            Block contact
+          </Button>
+        </Card>
+      )}
+
+      {other?.userId && other.userId !== user?.id && (
+        <Card className="mb-6">
+          <h2 className="mb-2 font-display font-semibold text-navy">
+            Report a concern
+          </h2>
+          {reportSubmitted ? (
+            <p className="text-sm leading-6 text-taupedark">
+              Your report was sent to the PharmX moderation team.
+            </p>
+          ) : (
+            <>
+              <p className="mb-4 text-sm leading-6 text-taupe">
+                Report unsafe, fraudulent, or inappropriate behavior for
+                confidential review by PharmX administrators.
+              </p>
+              {!showReportForm ? (
+                <Button
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => setShowReportForm(true)}
+                >
+                  Report contact
+                </Button>
+              ) : (
+                <form onSubmit={submitReport} className="space-y-4">
+                  <div>
+                    <Label>Reason</Label>
+                    <Select
+                      value={reportReason}
+                      onChange={(event) =>
+                        setReportReason(event.target.value)
+                      }
+                    >
+                      <option value="HARASSMENT">Harassment</option>
+                      <option value="FRAUD">Fraud or misrepresentation</option>
+                      <option value="UNSAFE_CONDUCT">Unsafe conduct</option>
+                      <option value="SPAM">Spam</option>
+                      <option value="PRIVACY">Privacy concern</option>
+                      <option value="OTHER">Other</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Details (optional)</Label>
+                    <TextArea
+                      rows={3}
+                      maxLength={1000}
+                      value={reportDetails}
+                      onChange={(event) =>
+                        setReportDetails(event.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit" disabled={busy}>
+                      Submit report
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => setShowReportForm(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </>
+          )}
+        </Card>
+      )}
+
+      {isRequestOwner && (
+        <Card className="mb-6">
+          <p className="text-sm leading-6 text-taupedark">
+            Your request is awaiting the doctor&apos;s decision. The meeting is
+            not confirmed yet.
+          </p>
+          <Button
+            className="mt-4"
+            variant="danger"
+            disabled={busy}
+            onClick={() => setStatus("CANCELLED")}
+          >
+            Cancel request
+          </Button>
+        </Card>
+      )}
 
       {isActive && (
         <Card className="mb-6">

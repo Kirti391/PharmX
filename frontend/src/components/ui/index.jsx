@@ -45,6 +45,7 @@ export function GlassCard({ className = "", children }) {
 }
 
 const statusColors = {
+  REQUESTED: "bg-amber-100 text-amber-800",
   CONFIRMED: "bg-sage/20 text-tealdeep",
   RUNNING_LATE: "bg-amber-100 text-amber-700",
   RESCHEDULE_REQUESTED: "bg-violet-100 text-violet-700",
@@ -66,6 +67,7 @@ const statusColors = {
 };
 
 const statusLabels = {
+  REQUESTED: "Awaiting Doctor",
   PENDING_VERIFICATION: "Pending Verification",
   RUNNING_LATE: "Running Late",
   RESCHEDULE_REQUESTED: "Reschedule Requested",

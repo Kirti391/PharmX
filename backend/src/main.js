@@ -69,6 +69,15 @@ const adminRoutes =
 const dashboardRoutes =
   require("./modules/dashboard/routes");
 
+const authorizationsRoutes =
+  require("./modules/authorizations/routes");
+
+const leadsRoutes =
+  require("./modules/leads/routes");
+
+const catalogueRoutes =
+  require("./modules/catalogue/routes");
+
 const app = express();
 
 /*
@@ -253,6 +262,21 @@ app.use(
 app.use(
   "/api/v1/dashboard",
   dashboardRoutes
+);
+
+app.use(
+  "/api/v1/authorizations",
+  authorizationsRoutes
+);
+
+app.use(
+  "/api/v1/leads",
+  leadsRoutes
+);
+
+app.use(
+  "/api/v1/catalogue",
+  catalogueRoutes
 );
 
 /*

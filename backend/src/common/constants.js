@@ -12,6 +12,7 @@ const PUBLIC_ROLES = [
   "MR",
   "PHARMACY",
   "DISTRIBUTOR_STOCKIST",
+  "DOCTOR",
 ];
 
 const ACCOUNT_STATUSES = [
@@ -50,9 +51,11 @@ const CONNECTION_STATUSES = ["PENDING", "ACCEPTED", "DECLINED"];
 const APPOINTMENT_MODES = ["PHYSICAL", "VIDEO"];
 
 const APPOINTMENT_STATUSES = [
+  "REQUESTED",
   "CONFIRMED",
   "RUNNING_LATE",
   "RESCHEDULE_REQUESTED",
+  "DECLINED",
   "CANCELLED",
   "EMERGENCY",
   "COMPLETED",
@@ -83,6 +86,8 @@ const DOC_TYPES = [
   "DRUG_LICENSE",
   "GST",
   "ID_PROOF",
+  "MEDICAL_REGISTRATION",
+  "COMPANY_AUTHORIZATION",
   "BUSINESS_REG",
   "OTHER",
 ];
@@ -101,6 +106,59 @@ const PRODUCT_CATEGORIES = [
   "General Medicine",
   "Nutraceuticals",
 ];
+
+const LEAD_STAGES = [
+  "NEW",
+  "REVIEWED",
+  "CONTACT_REQUESTED",
+  "CONNECTED",
+  "CONVERSATION_STARTED",
+  "APPOINTMENT_REQUESTED",
+  "APPOINTMENT_SCHEDULED",
+  "APPOINTMENT_COMPLETED",
+  "QUALIFIED",
+  "FOLLOW_UP",
+  "PARTNERSHIP_DISCUSSION",
+  "CONVERTED",
+  "CLOSED_WON",
+  "CLOSED_LOST",
+  "NOT_INTERESTED",
+  "UNREACHABLE",
+  "DUPLICATE",
+  "DISQUALIFIED",
+  "EXPIRED",
+  "REPORTED",
+  "SUSPENDED",
+];
+
+const CLOSED_LEAD_STAGES = [
+  "CLOSED_WON",
+  "CLOSED_LOST",
+  "NOT_INTERESTED",
+  "UNREACHABLE",
+  "DUPLICATE",
+  "DISQUALIFIED",
+  "EXPIRED",
+  "REPORTED",
+  "SUSPENDED",
+];
+
+function normalizeRole(role) {
+  if (role === "COMPANY") return "PHARMA_COMPANY";
+  if (
+    role === "INDEPENDENT_MR" ||
+    role === "MEDICAL_REPRESENTATIVE"
+  ) {
+    return "MR";
+  }
+  if (
+    role === "STOCKIST" ||
+    role === "DISTRIBUTOR"
+  ) {
+    return "DISTRIBUTOR_STOCKIST";
+  }
+  return role;
+}
 
 module.exports = {
   ROLES,
@@ -121,4 +179,7 @@ module.exports = {
   DOC_TYPES,
   DOC_STATUSES,
   PRODUCT_CATEGORIES,
+  LEAD_STAGES,
+  CLOSED_LEAD_STAGES,
+  normalizeRole,
 };

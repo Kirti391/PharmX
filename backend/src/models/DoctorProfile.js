@@ -47,7 +47,7 @@ const doctorProfileSchema = new mongoose.Schema(
 
     registrationStatus: {
       type: String,
-      enum: ["NOT_SUBMITTED", "PENDING", "VERIFIED", "EXPIRED"],
+      enum: ["NOT_SUBMITTED", "PENDING", "VERIFIED", "REJECTED", "EXPIRED"],
       default: "NOT_SUBMITTED",
     },
 
@@ -101,11 +101,15 @@ const doctorProfileSchema = new mongoose.Schema(
 
     appointmentDurationMinutes: {
       type: Number,
+      min: 5,
+      max: 240,
       default: 15,
     },
 
     maximumRequestsPerWeek: {
       type: Number,
+      min: 1,
+      max: 50,
       default: 5,
     },
 

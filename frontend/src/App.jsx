@@ -14,6 +14,7 @@ import DiscoverCompaniesPage from "./pages/DiscoverCompaniesPage";
 import DiscoverMRsPage from "./pages/DiscoverMRsPage";
 import DiscoverPharmaciesPage from "./pages/DiscoverPharmaciesPage";
 import DiscoverStockistsPage from "./pages/DiscoverStockistsPage";
+import DiscoverDoctorsPage from "./pages/DiscoverDoctorsPage";
 
 import RequirementsPage from "./pages/RequirementsPage";
 import RequirementCreatePage from "./pages/RequirementCreatePage";
@@ -30,6 +31,9 @@ import MessagesPage from "./pages/MessagesPage";
 import ConversationPage from "./pages/ConversationPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import VerificationPage from "./pages/VerificationPage";
+import AuthorizationsPage from "./pages/AuthorizationsPage";
+import LeadsPage from "./pages/LeadsPage";
+import CataloguePage from "./pages/CataloguePage";
 
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
@@ -45,6 +49,10 @@ export default function App() {
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/admin/login"
+        element={<LoginPage adminPortal />}
+      />
       <Route path="/signup" element={<SignupRoleSelectPage />} />
       <Route path="/signup/:role" element={<SignupFormPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -101,6 +109,15 @@ export default function App() {
         element={
           <Protected>
             <DiscoverStockistsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/discover/doctors"
+        element={
+          <Protected>
+            <DiscoverDoctorsPage />
           </Protected>
         }
       />
@@ -230,6 +247,33 @@ export default function App() {
         element={
           <Protected>
             <VerificationPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/authorizations"
+        element={
+          <Protected>
+            <AuthorizationsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/leads"
+        element={
+          <Protected>
+            <LeadsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/catalogue"
+        element={
+          <Protected>
+            <CataloguePage />
           </Protected>
         }
       />

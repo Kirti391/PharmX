@@ -60,7 +60,7 @@ async function run() {
   }
 
   // --- Independent MR ---
-  const mr2User = await upsertUser("mr2@pharmx.dev", "9990000004", "INDEPENDENT_MR");
+  const mr2User = await upsertUser("mr2@pharmx.dev", "9990000004", "MR");
   if (!(await MRProfile.findOne({ userId: mr2User._id }))) {
     await MRProfile.create({
       userId: mr2User._id,
@@ -99,7 +99,7 @@ async function run() {
   }
 
   // --- Stockist ---
-  const stockistUser = await upsertUser("stockist1@pharmx.dev", "9990000007", "STOCKIST");
+  const stockistUser = await upsertUser("stockist1@pharmx.dev", "9990000007", "DISTRIBUTOR_STOCKIST");
   if (!(await StockistProfile.findOne({ userId: stockistUser._id }))) {
     await StockistProfile.create({
       userId: stockistUser._id,
@@ -112,7 +112,7 @@ async function run() {
   }
 
   // --- Distributor ---
-  const distributorUser = await upsertUser("distributor1@pharmx.dev", "9990000008", "DISTRIBUTOR");
+  const distributorUser = await upsertUser("distributor1@pharmx.dev", "9990000008", "DISTRIBUTOR_STOCKIST");
   if (!(await StockistProfile.findOne({ userId: distributorUser._id }))) {
     await StockistProfile.create({
       userId: distributorUser._id,

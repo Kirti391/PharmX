@@ -72,7 +72,7 @@ const pharmaCompanyProfileSchema = new mongoose.Schema(
 
     verificationStatus: {
       type: String,
-      enum: ["PENDING", "VERIFIED", "REJECTED"],
+      enum: ["NOT_SUBMITTED", "PENDING", "VERIFIED", "REJECTED", "EXPIRED"],
       default: "PENDING",
     },
 

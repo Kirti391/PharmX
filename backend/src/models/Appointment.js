@@ -9,6 +9,7 @@ const appointmentSchema = new mongoose.Schema(
     durationMinutes: { type: Number, default: 30 },
     mode: { type: String, enum: APPOINTMENT_MODES, default: "PHYSICAL" },
     status: { type: String, enum: APPOINTMENT_STATUSES, default: "CONFIRMED" },
+    purposeCategory: { type: String, trim: true, maxlength: 120, default: "" },
     disruptionReason: { type: String, enum: [...DISRUPTION_REASONS, null], default: null },
     notes: { type: String, default: "" },
   },

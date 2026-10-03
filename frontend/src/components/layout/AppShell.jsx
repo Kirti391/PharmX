@@ -2,20 +2,12 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 import {
-  LayoutDashboard,
-  UserCircle,
-  Search,
-  Briefcase,
-  ClipboardList,
-  Users,
-  CalendarClock,
-  MessageSquare,
   Bell,
   LogOut,
-  ShieldCheck,
   Menu,
   X,
-  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 import { useAuthStore } from "../../store/authStore";
@@ -23,83 +15,15 @@ import { http } from "../../lib/api";
 import { useRealtimeEvent } from "../../lib/socket";
 import { ROLE_LABELS } from "../../lib/constants";
 import logo from "../../assets/pharmunis logo.png";
+import {
+  getNavigationForRole,
+  isNavigationActive,
+  userInitials,
+} from "./shellNavigation";
 
-const NAV_ITEMS = [
-  {
-    href: "/dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/profile",
-    label: "My Profile",
-    icon: UserCircle,
-  },
-  {
-    href: "/discover/companies",
-    label: "Discover",
-    icon: Search,
-  },
-  {
-    href: "/opportunities",
-    label: "Opportunities",
-    icon: Briefcase,
-  },
-  {
-    href: "/requirements",
-    label: "Requirements",
-    icon: ClipboardList,
-  },
-  {
-    href: "/connections",
-    label: "Connections",
-    icon: Users,
-  },
-  {
-    href: "/appointments",
-    label: "Appointments",
-    icon: CalendarClock,
-  },
-  {
-    href: "/messages",
-    label: "Messages",
-    icon: MessageSquare,
-  },
-  {
-    href: "/notifications",
-    label: "Notifications",
-    icon: Bell,
-  },
-];
-
-const ADMIN_NAV = [
-  {
-    href: "/admin/dashboard",
-    label: "Overview & Analytics",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/admin/users",
-    label: "Users",
-    icon: Users,
-  },
-  {
-    href: "/admin/verifications",
-    label: "Verifications",
-    icon: ShieldCheck,
-  },
-];
-
-function initials(name) {
-  if (!name) return "?";
-
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
+/* =========================================================
+   APP SHELL
+========================================================= */
 
 export function AppShell({ children }) {
   const location = useLocation();
@@ -110,13 +34,55 @@ export function AppShell({ children }) {
   const [unread, setUnread] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  /*
+   * Desktop sidebar state.
+   *
+   * Expanded  = 250px
+   * Collapsed = 76px
+   */
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("pharmunis-sidebar-collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const isAdmin = user?.role === "ADMIN";
+  const {
+    primary: primaryItems,
+    secondary: secondaryItems,
+    workspaceLabel,
+  } = getNavigationForRole(user?.role);
+
+  /* =======================================================
+     PERSIST SIDEBAR STATE
+  ======================================================= */
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "pharmunis-sidebar-collapsed",
+        String(collapsed)
+      );
+    } catch {
+      // Ignore localStorage errors.
+    }
+  }, [collapsed]);
+
+  /* =======================================================
+     NOTIFICATIONS
+  ======================================================= */
+
   useEffect(() => {
     http
       .get("/notifications")
       .then((list) => {
         setUnread(
           Array.isArray(list)
-            ? list.filter((notification) => !notification.readAt).length
+            ? list.filter(
+                (notification) => !notification.readAt
+              ).length
             : 0
         );
       })
@@ -127,9 +93,17 @@ export function AppShell({ children }) {
     setUnread((count) => count + 1);
   });
 
+  /* =======================================================
+     CLOSE MOBILE NAV ON ROUTE CHANGE
+  ======================================================= */
+
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  /* =======================================================
+     ESCAPE KEY
+  ======================================================= */
 
   useEffect(() => {
     function handleEscape(event) {
@@ -145,30 +119,171 @@ export function AppShell({ children }) {
     };
   }, []);
 
+  /* =======================================================
+     LOGOUT
+  ======================================================= */
+
   function logout() {
     clear();
     navigate("/login");
   }
 
-  const isAdmin = user?.role === "ADMIN";
-  const navItems = isAdmin ? ADMIN_NAV : NAV_ITEMS;
+  /* =======================================================
+     ACTIVE ROUTE
+  ======================================================= */
 
   function isActive(href) {
-    if (href === "/dashboard") {
-      return (
-        location.pathname === "/dashboard" ||
-        location.pathname === "/"
-      );
-    }
+    const item = [...primaryItems, ...secondaryItems].find(
+      (navigationItem) => navigationItem.href === href
+    );
+    return item ? isNavigationActive(location.pathname, item) : false;
+  }
 
-    return location.pathname.startsWith(href);
+  /* =======================================================
+     TOGGLE SIDEBAR
+  ======================================================= */
+
+  function toggleSidebar() {
+    setCollapsed((value) => !value);
+  }
+
+  /* =======================================================
+     NAV ITEM
+  ======================================================= */
+
+  function NavItem({ item }) {
+    const Icon = item.icon;
+    const active = isActive(item.href);
+
+    return (
+      <Link
+        to={item.href}
+        title={collapsed ? item.label : undefined}
+        className={[
+          "group relative flex items-center rounded-lg transition-all duration-200",
+          collapsed
+            ? "justify-center px-0 py-3"
+            : "gap-3 px-3 py-2.5",
+          "font-[Fauna_One] text-[11px]",
+          active
+            ? "bg-[#FBEAF2] text-[#D83F87]"
+            : "text-[#2A1B3D]/55 hover:bg-white hover:text-[#2A1B3D]",
+        ].join(" ")}
+      >
+        {/* Active line */}
+
+        {active && (
+          <span
+            className={[
+              "absolute rounded-full bg-[#D83F87]",
+              collapsed
+                ? "left-1 top-2 bottom-2 w-[2px]"
+                : "left-0 top-2 bottom-2 w-[2px]",
+            ].join(" ")}
+          />
+        )}
+
+        {/* Icon */}
+
+        <Icon
+          size={17}
+          strokeWidth={active ? 2 : 1.6}
+          className={[
+            "shrink-0 transition-colors duration-200",
+            active
+              ? "text-[#D83F87]"
+              : "text-[#A4B3B6] group-hover:text-[#44318D]",
+          ].join(" ")}
+        />
+
+        {/* Label */}
+
+        {!collapsed && (
+          <span className="min-w-0 flex-1 truncate">
+            {item.label}
+          </span>
+        )}
+
+        {/* Notification badge */}
+
+        {!collapsed &&
+          item.href === "/notifications" &&
+          unread > 0 && (
+            <span
+              className="
+                flex
+                h-5
+                min-w-5
+                items-center
+                justify-center
+                rounded-full
+                bg-[#E98074]
+                px-1
+                font-[Unica_One]
+                text-[8px]
+                text-white
+              "
+            >
+              {unread > 99 ? "99+" : unread}
+            </span>
+          )}
+
+        {/* Collapsed notification dot */}
+
+        {collapsed &&
+          item.href === "/notifications" &&
+          unread > 0 && (
+            <span
+              className="
+                absolute
+                right-2
+                top-2
+                h-2
+                w-2
+                rounded-full
+                bg-[#E98074]
+              "
+            />
+          )}
+
+        {/* Collapsed tooltip */}
+
+        {collapsed && (
+          <span
+            className="
+              pointer-events-none
+              absolute
+              left-[calc(100%+12px)]
+              z-[100]
+              hidden
+              whitespace-nowrap
+              rounded-md
+              bg-[#2A1B3D]
+              px-3
+              py-2
+              font-[Fauna_One]
+              text-[10px]
+              text-white
+              opacity-0
+              shadow-lg
+              transition-opacity
+              duration-150
+              group-hover:opacity-100
+              md:block
+            "
+          >
+            {item.label}
+          </span>
+        )}
+      </Link>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F7F9] text-[#2A1B3D]">
-      {/* =====================================================
+    <div className="min-h-screen bg-[#FCFAF8] text-[#2A1B3D]">
+      {/* ===================================================
           MOBILE BACKDROP
-          ===================================================== */}
+      =================================================== */}
 
       {mobileOpen && (
         <button
@@ -176,519 +291,320 @@ export function AppShell({ children }) {
           aria-label="Close navigation"
           onClick={() => setMobileOpen(false)}
           className="
-            fixed inset-0 z-40
-            bg-[#2A1B3D]/55
-            backdrop-blur-sm
+            fixed
+            inset-0
+            z-40
+            bg-[#2A1B3D]/25
+            backdrop-blur-[2px]
             md:hidden
-            pharmunis-fade-in
           "
         />
       )}
 
-      {/* =====================================================
+      {/* ===================================================
           SIDEBAR
-          ===================================================== */}
+      =================================================== */}
 
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col",
-          "bg-[#2A1B3D] text-white",
-          "shadow-[10px_0_45px_rgba(42,27,61,0.18)]",
-          "transition-transform duration-300 ease-out",
+          "fixed inset-y-0 left-0 z-50 flex flex-col",
+          "border-r border-[#E8E3E6] bg-[#FCFAF8]",
+          "transition-[width,transform] duration-300 ease-out",
+          collapsed ? "md:w-[76px]" : "md:w-[250px]",
+          "w-[250px]",
           mobileOpen
             ? "translate-x-0"
             : "-translate-x-full md:translate-x-0",
         ].join(" ")}
       >
-        {/* ===================================================
+        {/* =================================================
             BRAND
-            =================================================== */}
+        ================================================= */}
 
         <div
-          className="
-            flex h-[78px] shrink-0
-            items-center justify-between
-            border-b border-white/10
-            px-5
-          "
+          className={[
+            "shrink-0 transition-all duration-300",
+            collapsed
+              ? "px-3 pt-7 pb-6"
+              : "px-7 pt-8 pb-7",
+          ].join(" ")}
         >
           <Link
             to={isAdmin ? "/admin/dashboard" : "/dashboard"}
-            className="group flex min-w-0 items-center gap-3"
+            className={[
+              "group flex items-center",
+              collapsed
+                ? "justify-center"
+                : "gap-3",
+            ].join(" ")}
           >
-            {/* PharmUnis Logo */}
+            {/* Logo */}
+
             <div
               className="
-                relative flex h-11 w-11 shrink-0
-                items-center justify-center
-                overflow-hidden rounded-xl
-                bg-white
-                p-1.5
-                ring-1 ring-white/20
-                transition-all duration-300
-                group-hover:scale-105
-                group-hover:ring-[#D83F87]/60
-                group-hover:shadow-[0_0_28px_rgba(216,63,135,0.28)]
+                flex
+                h-10
+                w-10
+                shrink-0
+                items-center
+                justify-center
               "
             >
               <img
                 src={logo}
                 alt="PharmUnis"
                 className="
-                  h-full w-full
+                  h-full
+                  w-full
                   object-contain
-                  transition-transform duration-300
-                  group-hover:scale-110
+                  transition-transform
+                  duration-300
+                  group-hover:scale-105
                 "
               />
             </div>
 
-            <div className="min-w-0">
-              <div
-                className="
-                  font-display
-                  text-xl
-                  font-semibold
-                  tracking-wide
-                  text-white
-                  transition-colors duration-200
-                  group-hover:text-[#E98074]
-                "
-              >
-                PharmUnis
-              </div>
+            {/* Brand text */}
 
-              <div
+            {!collapsed && (
+              <div className="min-w-0">
+                <div
+                  className="
+                    whitespace-nowrap
+                    font-[Cinzel]
+                    text-[20px]
+                    font-semibold
+                    tracking-wide
+                    text-[#2A1B3D]
+                  "
+                >
+                  Pharm
+                  <span className="text-[#D83F87]">
+                    Unis
+                  </span>
+                </div>
+
+                <div
+                  className="
+                    mt-0.5
+                    whitespace-nowrap
+                    font-[Unica_One]
+                    text-[8px]
+                    uppercase
+                    tracking-[0.24em]
+                    text-[#A4B3B6]
+                  "
+                >
+                  Healthcare Network
+                </div>
+              </div>
+            )}
+          </Link>
+        </div>
+
+        {/* =================================================
+            WORKSPACE IDENTITY
+        ================================================= */}
+
+        {!isAdmin && !collapsed && (
+          <div className="px-6 pb-7">
+            <div
+              className="
+                border-b
+                border-[#E8E3E6]
+                pb-6
+              "
+            >
+              <p
                 className="
-                  mt-1 truncate
-                  font-nav
+                  font-[Unica_One]
                   text-[9px]
                   uppercase
                   tracking-[0.22em]
-                  text-[#A4B3B6]/65
-                "
-              >
-                Healthcare Network
-              </div>
-            </div>
-          </Link>
-
-          {/* Mobile Close */}
-          <button
-            type="button"
-            onClick={() => setMobileOpen(false)}
-            aria-label="Close navigation"
-            className="
-              rounded-xl p-2
-              text-[#A4B3B6]
-              transition-all duration-200
-              hover:bg-white/10
-              hover:text-white
-              hover:rotate-90
-              md:hidden
-            "
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* ===================================================
-            NAVIGATION
-            =================================================== */}
-
-        <nav className="flex-1 overflow-y-auto px-4 py-6">
-          <div
-            className="
-              mb-3 px-3
-              font-nav
-              text-[10px]
-              uppercase
-              tracking-[0.22em]
-              text-[#A4B3B6]/45
-            "
-          >
-            Navigation
-          </div>
-
-          <div className="space-y-1.5">
-            {navItems.map((item, index) => {
-              const active = isActive(item.href);
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={[
-                    "pharmunis-nav-item",
-                    "group",
-                    "flex items-center gap-3",
-                    "rounded-xl px-3.5 py-3",
-                    "font-nav text-sm",
-                    "pharmunis-fade-up",
-                    active
-                      ? "pharmunis-nav-item-active bg-[#D83F87] text-white shadow-[0_8px_28px_rgba(216,63,135,0.28)]"
-                      : "text-[#A4B3B6] hover:bg-white/[0.07] hover:text-white",
-                  ].join(" ")}
-                  style={{
-                    animationDelay: `${index * 35}ms`,
-                  }}
-                >
-                  <Icon
-                    size={18}
-                    strokeWidth={active ? 2.1 : 1.8}
-                    className={[
-                      "shrink-0 transition-all duration-200",
-                      active
-                        ? "text-white"
-                        : "text-[#A4B3B6]/65 group-hover:scale-110 group-hover:text-[#E98074]",
-                    ].join(" ")}
-                  />
-
-                  <span className="min-w-0 flex-1 truncate">
-                    {item.label}
-                  </span>
-
-                  {/* Notification Count */}
-                  {item.href === "/notifications" && unread > 0 && (
-                    <span
-                      className="
-                        pharmunis-notification-pulse
-                        flex min-w-[23px]
-                        items-center justify-center
-                        rounded-full
-                        bg-[#E98074]
-                        px-1.5 py-0.5
-                        font-nav
-                        text-[10px]
-                        font-semibold
-                        text-white
-                      "
-                    >
-                      {unread > 99 ? "99+" : unread}
-                    </span>
-                  )}
-
-                  {/* Active Indicator */}
-                  {active && item.href !== "/notifications" && (
-                    <ChevronRight
-                      size={15}
-                      className="
-                        shrink-0
-                        text-white/65
-                        transition-transform duration-200
-                        group-hover:translate-x-1
-                      "
-                    />
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-
-        {/* ===================================================
-            USER AREA
-            =================================================== */}
-
-        <div className="shrink-0 border-t border-white/10 p-4">
-          <div
-            className="
-              mb-3
-              flex items-center gap-3
-              rounded-xl
-              bg-white/[0.06]
-              p-3
-              ring-1 ring-white/[0.04]
-              transition-all duration-200
-              hover:bg-white/[0.09]
-            "
-          >
-            <div
-              className="
-                flex h-10 w-10 shrink-0
-                items-center justify-center
-                rounded-xl
-                bg-[#44318D]
-                font-nav
-                text-sm
-                font-semibold
-                text-white
-                shadow-[0_6px_18px_rgba(68,49,141,0.30)]
-                transition-transform duration-200
-                hover:scale-105
-              "
-            >
-              {initials(user?.email)}
-            </div>
-
-            <div className="min-w-0">
-              <p
-                className="
-                  truncate
-                  font-body
-                  text-sm
-                  font-medium
-                  text-white
-                "
-              >
-                {user?.email || "User"}
-              </p>
-
-              <p
-                className="
-                  mt-0.5 truncate
-                  font-nav
-                  text-[10px]
-                  uppercase
-                  tracking-wide
                   text-[#A4B3B6]
                 "
               >
-                {ROLE_LABELS[user?.role] || user?.role}
+                Workspace
+              </p>
+
+              <p
+                className="
+                  mt-2
+                  font-[Philosopher]
+                  text-[17px]
+                  font-semibold
+                  text-[#2A1B3D]
+                "
+              >
+                {workspaceLabel}
+              </p>
+
+              <p
+                className="
+                  mt-1
+                  truncate
+                  font-[Fauna_One]
+                  text-[10px]
+                  text-[#A4B3B6]
+                "
+              >
+                {user?.email || "Your pharmacy"}
               </p>
             </div>
           </div>
+        )}
 
-          <button
-            type="button"
-            onClick={logout}
-            className="
-              group
-              flex w-full
-              items-center gap-3
-              rounded-xl
-              px-3 py-2.5
-              font-nav
-              text-sm
-              text-[#A4B3B6]
-              transition-all duration-200
-              hover:bg-white/[0.07]
-              hover:text-white
-            "
-          >
-            <LogOut
-              size={17}
-              strokeWidth={1.8}
-              className="
-                transition-transform duration-200
-                group-hover:-translate-x-0.5
-              "
-            />
+        {/* =================================================
+            COLLAPSED WORKSPACE DIVIDER
+        ================================================= */}
 
-            <span>Log out</span>
-          </button>
-        </div>
-      </aside>
+        {!isAdmin && collapsed && (
+          <div className="mx-4 mb-5 h-px bg-[#E8E3E6]" />
+        )}
 
-      {/* =====================================================
-          MAIN CONTENT
-          ===================================================== */}
+        {/* =================================================
+            NAVIGATION
+        ================================================= */}
 
-      <div className="min-h-screen md:pl-72">
-        {/* ===================================================
-            TOPBAR
-            =================================================== */}
-
-        <header
-          className="
-            sticky top-0 z-30
-            h-[78px]
-            border-b border-[#E9E6EC]
-            bg-white/90
-            backdrop-blur-xl
-          "
+        <nav
+          className={[
+            "flex-1 overflow-y-auto",
+            collapsed ? "px-3" : "px-5",
+          ].join(" ")}
         >
-          <div
-            className="
-              flex h-full
-              items-center justify-between
-              px-4
-              sm:px-6
-              lg:px-8
-            "
-          >
-            {/* Left */}
-            <div className="flex items-center gap-3">
-              {/* Mobile Menu */}
-              <button
-                type="button"
-                onClick={() => setMobileOpen(true)}
-                aria-label="Open navigation"
-                className="
-                  flex h-10 w-10
-                  items-center justify-center
-                  rounded-xl
-                  border border-[#E9E6EC]
-                  bg-white
-                  text-[#2A1B3D]
-                  shadow-sm
-                  transition-all duration-200
-                  hover:-translate-y-0.5
-                  hover:border-[#D83F87]
-                  hover:text-[#D83F87]
-                  hover:shadow-[0_8px_22px_rgba(216,63,135,0.12)]
-                  md:hidden
-                "
-              >
-                <Menu size={20} />
-              </button>
+          {/* Section label */}
 
-              {/* Workspace Context */}
-              <div className="hidden sm:block">
+          {!collapsed && (
+            <p
+              className="
+                mb-3
+                px-3
+                font-[Unica_One]
+                text-[9px]
+                uppercase
+                tracking-[0.22em]
+                text-[#A4B3B6]
+              "
+            >
+              {isAdmin ? "Administration" : "Workspace"}
+            </p>
+          )}
+
+          {/* Main navigation */}
+
+          <div className="space-y-1">
+            {primaryItems.map((item) => (
+              <NavItem
+                key={item.href}
+                item={item}
+              />
+            ))}
+          </div>
+
+          {/* =================================================
+              PERSONAL SECTION
+          ================================================= */}
+
+          {!isAdmin && (
+            <>
+              <div
+                className={[
+                  "h-px bg-[#E8E3E6]",
+                  collapsed
+                    ? "my-5"
+                    : "my-7",
+                ].join(" ")}
+              />
+
+              {!collapsed && (
                 <p
                   className="
-                    font-nav
-                    text-[10px]
+                    mb-3
+                    px-3
+                    font-[Unica_One]
+                    text-[9px]
                     uppercase
                     tracking-[0.22em]
                     text-[#A4B3B6]
                   "
                 >
-                  PharmUnis
+                  Personal
                 </p>
+              )}
 
-                <p
-                  className="
-                    mt-0.5
-                    font-support
-                    text-base
-                    font-semibold
-                    text-[#2A1B3D]
-                  "
-                >
-                  {isAdmin
-                    ? "Administration"
-                    : "Pharmacy Workspace"}
-                </p>
-              </div>
-            </div>
-
-            {/* Right */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Search */}
-              <Link
-                to="/discover/companies"
-                className="
-                  group
-                  hidden h-10
-                  items-center gap-2
-                  rounded-xl
-                  border border-[#E9E6EC]
-                  bg-[#F8F7F9]
-                  px-4
-                  font-nav
-                  text-xs
-                  text-[#A4B3B6]
-                  transition-all duration-200
-                  hover:-translate-y-0.5
-                  hover:border-[#D83F87]
-                  hover:bg-white
-                  hover:text-[#2A1B3D]
-                  hover:shadow-[0_8px_22px_rgba(216,63,135,0.10)]
-                  sm:flex
-                "
-              >
-                <Search
-                  size={16}
-                  className="
-                    transition-transform duration-200
-                    group-hover:scale-110
-                  "
-                />
-
-                <span>Search</span>
-              </Link>
-
-              {/* Notifications */}
-              <Link
-                to="/notifications"
-                aria-label="Notifications"
-                className="
-                  group
-                  relative
-                  flex h-10 w-10
-                  items-center justify-center
-                  rounded-xl
-                  border border-[#E9E6EC]
-                  bg-[#F8F7F9]
-                  text-[#2A1B3D]
-                  transition-all duration-200
-                  hover:-translate-y-0.5
-                  hover:border-[#D83F87]
-                  hover:bg-white
-                  hover:text-[#D83F87]
-                  hover:shadow-[0_8px_22px_rgba(216,63,135,0.10)]
-                "
-              >
-                <Bell
-                  size={18}
-                  strokeWidth={1.8}
-                  className="
-                    transition-transform duration-300
-                    group-hover:rotate-[-8deg]
-                  "
-                />
-
-                {unread > 0 && (
-                  <span
-                    className="
-                      pharmunis-notification-pulse
-                      absolute
-                      right-1.5
-                      top-1.5
-                      h-2.5
-                      w-2.5
-                      rounded-full
-                      bg-[#D83F87]
-                      ring-2
-                      ring-[#F8F7F9]
-                    "
+              <div className="space-y-1">
+                {secondaryItems.map((item) => (
+                  <NavItem
+                    key={item.href}
+                    item={item}
                   />
-                )}
-              </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </nav>
 
-              {/* Profile */}
-              <Link
-                to="/profile"
+        {/* =================================================
+            USER / LOGOUT
+        ================================================= */}
+
+        <div
+          className={[
+            "shrink-0",
+            collapsed
+              ? "px-3 pb-5 pt-4"
+              : "px-6 pb-6 pt-5",
+          ].join(" ")}
+        >
+          <div
+            className={[
+              "border-t border-[#E8E3E6]",
+              collapsed ? "pt-4" : "pt-5",
+            ].join(" ")}
+          >
+            {/* User */}
+
+            <Link
+              to={isAdmin ? "/admin/dashboard" : "/profile"}
+              title={
+                collapsed
+                  ? isAdmin
+                    ? "Administration"
+                    : user?.email || "Profile"
+                  : undefined
+              }
+              className={[
+                "group flex items-center rounded-xl transition-colors duration-200 hover:bg-white",
+                collapsed
+                  ? "justify-center px-1 py-2"
+                  : "gap-3 px-2 py-2",
+              ].join(" ")}
+            >
+              <div
                 className="
-                  group
-                  flex items-center gap-2
-                  rounded-xl
-                  border border-[#E9E6EC]
-                  bg-[#F8F7F9]
-                  px-2 py-1.5
-                  transition-all duration-200
-                  hover:-translate-y-0.5
-                  hover:border-[#D83F87]
-                  hover:bg-white
-                  hover:shadow-[0_8px_22px_rgba(216,63,135,0.10)]
-                  sm:gap-3 sm:pr-3
+                  flex
+                  h-9
+                  w-9
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-[#44318D]
+                  font-[Unica_One]
+                  text-[10px]
+                  text-white
                 "
               >
-                <div
-                  className="
-                    flex h-8 w-8
-                    items-center justify-center
-                    rounded-lg
-                    bg-[#44318D]
-                    font-nav
-                    text-xs
-                    font-semibold
-                    text-white
-                    transition-transform duration-200
-                    group-hover:scale-105
-                  "
-                >
-                  {initials(user?.email)}
-                </div>
+                {userInitials(user?.name || user?.email)}
+              </div>
 
-                <div className="hidden max-w-[160px] sm:block">
+              {!collapsed && (
+                <div className="min-w-0 flex-1">
                   <p
                     className="
                       truncate
-                      font-body
-                      text-xs
+                      font-[Fauna_One]
+                      text-[10px]
                       font-semibold
                       text-[#2A1B3D]
                     "
@@ -698,42 +614,255 @@ export function AppShell({ children }) {
 
                   <p
                     className="
+                      mt-0.5
                       truncate
-                      font-nav
-                      text-[9px]
+                      font-[Unica_One]
+                      text-[8px]
                       uppercase
-                      tracking-wide
+                      tracking-[0.12em]
                       text-[#A4B3B6]
                     "
                   >
-                    {ROLE_LABELS[user?.role] || user?.role}
+                    {ROLE_LABELS[user?.role] ||
+                      user?.role}
                   </p>
                 </div>
-              </Link>
-            </div>
+              )}
+            </Link>
+
+            {/* Logout */}
+
+            <button
+              type="button"
+              onClick={logout}
+              title={collapsed ? "Log out" : undefined}
+              className={[
+                "group mt-3 flex font-[Unica_One] text-[9px] uppercase tracking-[0.14em] text-[#A4B3B6] transition-colors duration-200 hover:text-[#D83F87]",
+                collapsed
+                  ? "w-full justify-center px-2"
+                  : "w-full items-center gap-2 px-2",
+              ].join(" ")}
+            >
+              <LogOut
+                size={14}
+                strokeWidth={1.6}
+              />
+
+              {!collapsed && <span>Log out</span>}
+
+              {collapsed && (
+                <span
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-[88px]
+                    hidden
+                    whitespace-nowrap
+                    rounded-md
+                    bg-[#2A1B3D]
+                    px-3
+                    py-2
+                    font-[Fauna_One]
+                    text-[10px]
+                    normal-case
+                    tracking-normal
+                    text-white
+                    opacity-0
+                    shadow-lg
+                    transition-opacity
+                    duration-150
+                    group-hover:opacity-100
+                    md:block
+                  "
+                >
+                  Log out
+                </span>
+              )}
+            </button>
           </div>
-        </header>
+        </div>
 
-        {/* ===================================================
-            PAGE CONTENT
-            =================================================== */}
+        {/* =================================================
+            DESKTOP COLLAPSE BUTTON
+        ================================================= */}
 
-        <main className="min-h-[calc(100vh-78px)] bg-[#F8F7F9]">
-          <div
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label={
+            collapsed
+              ? "Expand sidebar"
+              : "Collapse sidebar"
+          }
+          title={
+            collapsed
+              ? "Expand sidebar"
+              : "Collapse sidebar"
+          }
+          className={[
+            "absolute -right-3 top-[92px] z-50",
+            "hidden h-7 w-7 items-center justify-center",
+            "rounded-full border border-[#E8E3E6]",
+            "bg-[#FCFAF8] text-[#A4B3B6]",
+            "shadow-[0_2px_8px_rgba(42,27,61,0.06)]",
+            "transition-all duration-200",
+            "hover:border-[#D83F87]/30",
+            "hover:bg-white",
+            "hover:text-[#D83F87]",
+            "md:flex",
+          ].join(" ")}
+        >
+          {collapsed ? (
+            <PanelLeftOpen
+              size={13}
+              strokeWidth={1.7}
+            />
+          ) : (
+            <PanelLeftClose
+              size={13}
+              strokeWidth={1.7}
+            />
+          )}
+        </button>
+
+        {/* =================================================
+            MOBILE CLOSE
+        ================================================= */}
+
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close navigation"
+          className="
+            absolute
+            right-4
+            top-5
+            rounded-full
+            p-2
+            text-[#A4B3B6]
+            transition-colors
+            hover:bg-white
+            hover:text-[#D83F87]
+            md:hidden
+          "
+        >
+          <X size={18} />
+        </button>
+      </aside>
+
+      {/* ===================================================
+          MAIN CONTENT
+      =================================================== */}
+
+      <div
+        className={[
+          "min-h-screen transition-[padding] duration-300 ease-out",
+          collapsed
+            ? "md:pl-[76px]"
+            : "md:pl-[250px]",
+        ].join(" ")}
+      >
+        {/* =================================================
+            MOBILE HEADER
+        ================================================= */}
+
+        <header
+          className="
+            sticky
+            top-0
+            z-30
+            flex
+            h-[62px]
+            items-center
+            justify-between
+            border-b
+            border-[#E8E3E6]
+            bg-[#FCFAF8]/95
+            px-4
+            backdrop-blur-md
+            md:hidden
+          "
+        >
+          {/* Menu */}
+
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open navigation"
             className="
-              mx-auto
-              w-full
-              max-w-[1600px]
-              px-4 py-6
-              sm:px-6 sm:py-7
-              lg:px-8 lg:py-8
-              xl:px-10
+              flex
+              h-9
+              w-9
+              items-center
+              justify-center
+              rounded-lg
+              text-[#2A1B3D]
+              transition-colors
+              hover:bg-white
+              hover:text-[#D83F87]
             "
           >
-            <div className="pharmunis-fade-up">
-              {children}
-            </div>
-          </div>
+            <Menu size={20} />
+          </button>
+
+          {/* Mobile brand */}
+
+          <Link
+            to={isAdmin ? "/admin/dashboard" : "/dashboard"}
+            className="
+              font-[Cinzel]
+              text-[18px]
+              font-semibold
+              tracking-wide
+              text-[#2A1B3D]
+            "
+          >
+            Pharm
+            <span className="text-[#D83F87]">
+              Unis
+            </span>
+          </Link>
+
+          {/* Notifications */}
+
+          <Link
+            to="/notifications"
+            aria-label="Notifications"
+            className="
+              relative
+              p-2
+              text-[#2A1B3D]
+              transition-colors
+              hover:text-[#D83F87]
+            "
+          >
+            <Bell
+              size={18}
+              strokeWidth={1.7}
+            />
+
+            {unread > 0 && (
+              <span
+                className="
+                  absolute
+                  right-1
+                  top-1
+                  h-2
+                  w-2
+                  rounded-full
+                  bg-[#D83F87]
+                "
+              />
+            )}
+          </Link>
+        </header>
+
+        {/* =================================================
+            PAGE CONTENT
+        ================================================= */}
+
+        <main className="min-h-screen bg-[#FCFAF8]">
+          {children}
         </main>
       </div>
     </div>

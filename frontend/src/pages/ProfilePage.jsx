@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Building2,
   CalendarDays,
   CheckCircle2,
   FileCheck2,
   Globe2,
-  Languages,
   MapPin,
   MessageSquare,
   PackageSearch,
@@ -13,9 +13,7 @@ import {
   Save,
   ShieldCheck,
   Store,
-  Truck,
   Upload,
-  UserRound,
 } from "lucide-react";
 
 import { http, apiErrorMessage } from "../lib/api";
@@ -322,10 +320,6 @@ function Toggle({
   );
 }
 
-function profileValue(profile, key, fallback = "") {
-  return profile?.[key] ?? fallback;
-}
-
 export default function ProfilePage() {
   const user = useAuthStore((state) => state.user);
 
@@ -346,9 +340,14 @@ export default function ProfilePage() {
     return <PharmacyProfileForm />;
   }
 
+  if (user.role === "DOCTOR") {
+    return <DoctorProfileForm />;
+  }
+
   if (
     user.role === "STOCKIST" ||
-    user.role === "DISTRIBUTOR"
+    user.role === "DISTRIBUTOR" ||
+    user.role === "DISTRIBUTOR_STOCKIST"
   ) {
     return <StockistProfileForm />;
   }
@@ -360,6 +359,429 @@ export default function ProfilePage() {
     >
       No profile type for this role.
     </p>
+  );
+}
+
+function DoctorProfileForm() {
+  const [profile, setProfile] = useState(null);
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [unblockingUserId, setUnblockingUserId] = useState("");
+
+  useEffect(() => {
+    http
+      .get("/profiles/doctor/me")
+      .then(setProfile)
+      .catch((requestError) =>
+        setError(
+          apiErrorMessage(
+            requestError,
+            "Unable to load your professional profile."
+          )
+        )
+      );
+  }, []);
+
+  useEffect(() => {
+    http
+      .get("/profiles/doctor/blocked-users")
+      .then((users) =>
+        setBlockedUsers(Array.isArray(users) ? users : [])
+      )
+      .catch((requestError) =>
+        setError(
+          apiErrorMessage(
+            requestError,
+            "Unable to load blocked professional contacts."
+          )
+        )
+      );
+  }, []);
+
+  function update(field, value) {
+    setProfile((current) => ({ ...current, [field]: value }));
+    setSaved(false);
+  }
+
+  function toggleListValue(field, value) {
+    const current = Array.isArray(profile[field])
+      ? profile[field]
+      : [];
+    update(
+      field,
+      current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value]
+    );
+  }
+
+  async function onSubmit(event) {
+    event.preventDefault();
+    setError("");
+    setSaved(false);
+    setSaving(true);
+
+    try {
+      setProfile(await http.patch("/profiles/doctor/me", profile));
+      setSaved(true);
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError, "Failed to save your profile."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function unblockUser(userId) {
+    setError("");
+    setUnblockingUserId(userId);
+    try {
+      await http.delete(`/profiles/doctor/blocked-users/${userId}`);
+      setBlockedUsers((current) =>
+        current.filter((user) => user.userId !== userId)
+      );
+    } catch (requestError) {
+      setError(
+        apiErrorMessage(
+          requestError,
+          "Unable to unblock this professional contact."
+        )
+      );
+    } finally {
+      setUnblockingUserId("");
+    }
+  }
+
+  if (!profile) {
+    return error ? (
+      <p role="alert" className="font-body text-sm text-red-600">
+        {error}
+      </p>
+    ) : (
+      <Loader />
+    );
+  }
+
+  const registrationFieldsLocked = ["PENDING", "VERIFIED"].includes(
+    profile.registrationStatus
+  );
+
+  return (
+    <div className="mx-auto max-w-4xl pb-10">
+      <h1 className="font-display text-2xl font-semibold text-navy">
+        Professional profile
+      </h1>
+      <p className="mt-2 font-body text-sm text-taupe">
+        Keep your professional details current and decide which verified
+        pharmaceutical contacts may request appointments.
+      </p>
+
+      <form onSubmit={onSubmit} className="mt-6 space-y-6">
+        <Card className="p-6 sm:p-8">
+          <SectionHeader
+            icon={Stethoscope}
+            eyebrow="Professional identity"
+            title="Practice information"
+            description="Registration details are locked while a submission is pending or verified. Contact PharmX support if a correction is required."
+          />
+          <div className="grid gap-5 md:grid-cols-2">
+            <div>
+              <Label>Full name</Label>
+              <Input
+                required
+                value={profile.fullName || ""}
+                onChange={(event) =>
+                  update("fullName", event.target.value)
+                }
+              />
+            </div>
+            <div>
+              <Label>Specialty</Label>
+              <Input
+                value={profile.specialty || ""}
+                onChange={(event) =>
+                  update("specialty", event.target.value)
+                }
+              />
+            </div>
+            <div>
+              <Label>Subspecialty</Label>
+              <Input
+                value={profile.subspecialty || ""}
+                onChange={(event) =>
+                  update("subspecialty", event.target.value)
+                }
+              />
+            </div>
+            <div>
+              <Label>Qualification</Label>
+              <Input
+                value={profile.qualification || ""}
+                onChange={(event) =>
+                  update("qualification", event.target.value)
+                }
+              />
+            </div>
+            <div>
+              <Label>Registration council</Label>
+              <Input
+                disabled={registrationFieldsLocked}
+                value={profile.registrationCouncil || ""}
+                onChange={(event) =>
+                  update("registrationCouncil", event.target.value)
+                }
+              />
+            </div>
+            <div>
+              <Label>Registration number</Label>
+              <Input
+                disabled={registrationFieldsLocked}
+                value={profile.registrationNumber || ""}
+                onChange={(event) =>
+                  update("registrationNumber", event.target.value)
+                }
+              />
+            </div>
+            <div>
+              <Label>Clinic / hospital</Label>
+              <Input
+                value={profile.clinicHospitalAffiliation || ""}
+                onChange={(event) =>
+                  update(
+                    "clinicHospitalAffiliation",
+                    event.target.value
+                  )
+                }
+              />
+            </div>
+            <div>
+              <Label>City / general locality</Label>
+              <Input
+                required
+                value={profile.location || ""}
+                onChange={(event) =>
+                  update("location", event.target.value)
+                }
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Languages</Label>
+              <TagInput
+                values={profile.languages || []}
+                onChange={(values) => update("languages", values)}
+                placeholder="e.g. Hindi"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Professional interests</Label>
+              <TagInput
+                values={profile.professionalInterests || []}
+                onChange={(values) =>
+                  update("professionalInterests", values)
+                }
+                placeholder="e.g. Cardiology"
+              />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 sm:p-8">
+          <SectionHeader
+            icon={ShieldCheck}
+            eyebrow="Trust"
+            title="Registration verification"
+            description="Upload your registration certificate for review. Your registration number is not shown in the discovery directory."
+          />
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="font-body text-sm font-medium text-navy">
+                Registration status
+              </p>
+              <p className="mt-1 font-body text-xs text-taupe">
+                {profile.registrationStatus || "NOT_SUBMITTED"}
+              </p>
+            </div>
+            <Link
+              to="/verification"
+              className="rounded-full bg-purple px-4 py-2.5 font-body text-sm text-white"
+            >
+              Submit registration
+            </Link>
+          </div>
+        </Card>
+
+        <Card className="p-6 sm:p-8">
+          <SectionHeader
+            icon={CalendarDays}
+            eyebrow="Consent & availability"
+            title="Control professional requests"
+            description="Only verified medical representatives or verified pharmaceutical companies can find you, and only when you opt in for their request type."
+          />
+          <div className="space-y-4">
+            <Toggle
+              checked={Boolean(profile.acceptsMRRequests)}
+              onChange={(value) => update("acceptsMRRequests", value)}
+              label="Accept medical representative requests"
+              description="Allows verified, company-representing MRs to find you and propose a purpose-specific appointment."
+            />
+            <Toggle
+              checked={Boolean(profile.acceptsCompanyInformation)}
+              onChange={(value) =>
+                update("acceptsCompanyInformation", value)
+              }
+              label="Accept pharmaceutical company information"
+              description="Allows verified pharmaceutical companies to request a professional information meeting."
+            />
+            <div>
+              <Label>Accepted therapeutic categories</Label>
+              <div className="flex flex-wrap gap-2">
+                {PRODUCT_CATEGORIES.map((category) => {
+                  const selected =
+                    profile.acceptedCategories?.includes(category);
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      aria-pressed={Boolean(selected)}
+                      onClick={() =>
+                        toggleListValue("acceptedCategories", category)
+                      }
+                      className="rounded-full border px-3 py-2 font-body text-xs"
+                      style={{
+                        borderColor: selected
+                          ? COLORS.primary
+                          : COLORS.border,
+                        backgroundColor: selected
+                          ? "#FCE8F1"
+                          : "#FFFFFF",
+                        color: COLORS.navy,
+                      }}
+                    >
+                      {category}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 font-body text-xs text-taupe">
+                Leave all categories unselected to allow any category you have
+                explicitly opted into.
+              </p>
+            </div>
+            <div>
+              <Label>Accepted communication modes</Label>
+              <div className="flex gap-2">
+                {["VIDEO", "PHYSICAL"].map((mode) => {
+                  const selected =
+                    profile.communicationModes?.includes(mode);
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      aria-pressed={Boolean(selected)}
+                      onClick={() =>
+                        toggleListValue("communicationModes", mode)
+                      }
+                      className="rounded-lg border px-4 py-2.5 font-body text-sm"
+                      style={{
+                        borderColor: selected
+                          ? COLORS.primary
+                          : COLORS.border,
+                        color: COLORS.navy,
+                      }}
+                    >
+                      {mode === "VIDEO" ? "Online" : "In person"}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label>Meeting duration (minutes)</Label>
+                <Input
+                  type="number"
+                  min="5"
+                  max="240"
+                  value={profile.appointmentDurationMinutes ?? 15}
+                  onChange={(event) =>
+                    update(
+                      "appointmentDurationMinutes",
+                      Number(event.target.value)
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <Label>Maximum requests per week</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={profile.maximumRequestsPerWeek ?? 5}
+                  onChange={(event) =>
+                    update(
+                      "maximumRequestsPerWeek",
+                      Number(event.target.value)
+                    )
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <SaveBar
+          saved={saved}
+          error={error}
+          saving={saving}
+        />
+      </form>
+
+      <Card className="mt-6 p-6 sm:p-8">
+        <SectionHeader
+          icon={ShieldCheck}
+          eyebrow="Safety"
+          title="Blocked professional contacts"
+          description="Blocked contacts cannot find you in doctor discovery, request appointments, or continue professional messaging."
+        />
+        {blockedUsers.length === 0 ? (
+          <p className="font-body text-sm text-taupe">
+            You have not blocked any contacts.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {blockedUsers.map((blockedUser) => (
+              <li
+                key={blockedUser.userId}
+                className="flex flex-wrap items-center justify-between gap-3 border-b pb-3 last:border-0"
+                style={{ borderColor: COLORS.border }}
+              >
+                <div>
+                  <p className="font-body text-sm font-medium text-navy">
+                    {blockedUser.name || "PharmX member"}
+                  </p>
+                  <p className="font-body text-xs text-taupe">
+                    {blockedUser.role?.replaceAll("_", " ")}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={unblockingUserId === blockedUser.userId}
+                  onClick={() => unblockUser(blockedUser.userId)}
+                >
+                  {unblockingUserId === blockedUser.userId
+                    ? "Unblocking…"
+                    : "Unblock"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
   );
 }
 
@@ -535,19 +957,20 @@ function MRProfileForm() {
             placeholder="e.g. Karnal, Haryana"
           />
 
-          <div>
-            <Label>Companies represented</Label>
-            <Input
-              value={profile.companiesRepresented ?? ""}
-              onChange={(event) =>
-                setProfile({
-                  ...profile,
-                  companiesRepresented:
-                    event.target.value,
-                })
-              }
-              placeholder="Free text for MVP"
-            />
+          <div className="rounded-xl bg-purple/5 p-4">
+            <p className="text-sm font-medium text-navy">
+              Company representation
+            </p>
+            <p className="mt-1 text-xs leading-5 text-taupe">
+              Representation is displayed only through a reviewed and
+              company-approved authorization, not self-entered profile text.
+            </p>
+            <Link
+              to="/authorizations"
+              className="mt-3 inline-flex text-sm font-medium text-purple underline"
+            >
+              Manage company authorizations
+            </Link>
           </div>
 
           <SaveBar
@@ -1281,16 +1704,13 @@ function PharmacyProfileForm() {
             <div>
               <Label>Licence expiry date</Label>
               <Input
-                disabled={!editing}
+                disabled
                 type="date"
-                value={profile.licenceExpiryDate ?? ""}
-                onChange={(event) =>
-                  update(
-                    "licenceExpiryDate",
-                    event.target.value
-                  )
-                }
+                value={String(profile.licenceExpiryDate || "").slice(0, 10)}
               />
+              <p className="mt-1 text-xs text-taupe">
+                Updated from your approved drug licence document.
+              </p>
             </div>
 
             <div>
@@ -1929,7 +2349,9 @@ function StockistProfileForm() {
         My{" "}
         {profile.type === "DISTRIBUTOR"
           ? "Distributor"
-          : "Stockist"}{" "}
+          : profile.type === "C_AND_F_AGENT"
+            ? "C&F agent"
+            : "Stockist"}{" "}
         Profile
       </h1>
 

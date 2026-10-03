@@ -135,6 +135,10 @@ function normalizeRole(role) {
     return "DISTRIBUTOR_STOCKIST";
   }
 
+  if (normalized === "PHARMA_COMPANY") {
+    return "COMPANY";
+  }
+
   return normalized;
 }
 

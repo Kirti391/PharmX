@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { http, apiErrorMessage } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
-import { Button, Input, Label } from "../components/ui";
+import { Button, Input, Label, Select } from "../components/ui";
 
 import logo from "../assets/pharmunis logo.png";
 
@@ -31,10 +31,11 @@ const ROLE_MAP = {
   },
   "distributor-stockist": {
     role: "DISTRIBUTOR_STOCKIST",
-    title: "Distributor / Stockist",
+    title: "Distributor / Stockist / C&F Agent",
     nameLabel: "Business name",
     needsLocation: true,
     organization: true,
+    needsBusinessType: true,
   },
   doctor: {
     role: "DOCTOR",
@@ -57,6 +58,7 @@ export default function SignupFormPage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [location, setLocation] = useState("");
+  const [businessType, setBusinessType] = useState("STOCKIST");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -96,6 +98,7 @@ export default function SignupFormPage() {
         role: config.role,
         displayName,
         location: config.needsLocation ? location : undefined,
+        businessType: config.needsBusinessType ? businessType : undefined,
       });
 
       setSession(
@@ -300,6 +303,29 @@ export default function SignupFormPage() {
                   className="mt-0.5 h-9 rounded-none border-0 border-b border-[#A4B3B6]/50 bg-transparent px-0 text-sm text-[#2A1B3D] placeholder:text-[#A4B3B6] shadow-none focus:border-[#D83F87] focus:ring-0"
                 />
               </div>
+
+              {/* Location */}
+              {config.needsBusinessType && (
+                <div className="mb-4">
+                  <Label
+                    htmlFor="signup-business-type"
+                    className="text-[#2A1B3D] text-xs"
+                    style={{ fontFamily: "Philosopher" }}
+                  >
+                    Business type
+                  </Label>
+                  <Select
+                    id="signup-business-type"
+                    value={businessType}
+                    onChange={(event) => setBusinessType(event.target.value)}
+                    className="mt-0.5 h-9 rounded-none border-0 border-b border-[#A4B3B6]/50 bg-transparent px-0 text-sm text-[#2A1B3D] shadow-none focus:border-[#D83F87] focus:ring-0"
+                  >
+                    <option value="STOCKIST">Stockist</option>
+                    <option value="DISTRIBUTOR">Distributor</option>
+                    <option value="C_AND_F_AGENT">Clearing &amp; forwarding agent</option>
+                  </Select>
+                </div>
+              )}
 
               {/* Location */}
               {config.needsLocation && (
