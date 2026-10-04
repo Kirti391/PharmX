@@ -15,13 +15,13 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-import { http } from "../lib/api";
+import { apiErrorMessage, http } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
 import {
   Card,
+  ErrorState,
   EmptyState,
   Loader,
-  StatusBadge,
   Button,
 } from "../components/ui";
 
@@ -30,9 +30,9 @@ const COLORS = {
   navy: "#2A1B3D",
   purple: "#44318D",
   coral: "#E98074",
-  muted: "#A4B3B6",
-  background: "#F8F7F9",
-  border: "#E9E6EC",
+  muted: "#8C8496",
+  background: "#FCFAF8",
+  border: "#E9E2EA",
 };
 
 const TABS = [
@@ -319,11 +319,12 @@ export default function RequirementsPage() {
     user?.role === "PHARMACY" ? "OPEN" : "ALL"
   );
   const [search, setSearch] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [reloadCount, setReloadCount] = useState(0);
+  const [loadedTab, setLoadedTab] = useState(null);
 
   useEffect(() => {
     let mounted = true;
-
-    setItems(null);
 
     const query =
       activeTab === "ALL"
@@ -336,17 +337,20 @@ export default function RequirementsPage() {
         if (!mounted) return;
 
         setItems(Array.isArray(response) ? response : []);
+        setLoadedTab(activeTab);
       })
-      .catch(() => {
+      .catch((requestError) => {
         if (mounted) {
-          setItems([]);
+          setLoadError(
+            apiErrorMessage(requestError, "Unable to load requirements.")
+          );
         }
       });
 
     return () => {
       mounted = false;
     };
-  }, [activeTab]);
+  }, [activeTab, reloadCount]);
 
   const filteredItems = useMemo(() => {
     if (!Array.isArray(items)) return [];
@@ -390,19 +394,14 @@ export default function RequirementsPage() {
     <div className="space-y-7 pb-10">
       {/* PAGE HEADER */}
       <section
-        className="relative overflow-hidden rounded-[26px] px-6 py-7 sm:px-8 lg:px-10 lg:py-8"
+        className="relative overflow-hidden rounded-[22px] border bg-white px-5 py-6 shadow-[0_8px_28px_rgba(42,27,61,0.045)] sm:px-8 sm:py-7 lg:px-9"
         style={{
-          background: `linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.purple} 100%)`,
+          borderColor: COLORS.border,
         }}
       >
         <div
-          className="absolute -right-20 -top-24 h-60 w-60 rounded-full opacity-20 blur-3xl"
+          className="absolute right-0 top-0 h-full w-1"
           style={{ backgroundColor: COLORS.primary }}
-        />
-
-        <div
-          className="absolute -bottom-20 left-1/3 h-48 w-48 rounded-full opacity-10 blur-3xl"
-          style={{ backgroundColor: COLORS.coral }}
         />
 
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -410,20 +409,20 @@ export default function RequirementsPage() {
             <div className="flex items-center gap-2">
               <PackageSearch
                 size={17}
-                className="text-white/60"
+                style={{ color: COLORS.purple }}
                 strokeWidth={1.7}
               />
 
-              <p className="font-[Unica_One] text-[10px] uppercase tracking-[0.2em] text-white/55">
+              <p className="font-[Unica_One] text-[10px] uppercase tracking-[0.2em]" style={{ color: COLORS.primary }}>
                 Procurement Workspace
               </p>
             </div>
 
-            <h1 className="mt-3 font-[Cinzel] text-2xl font-semibold text-white sm:text-3xl">
+            <h1 className="mt-3 font-[Cinzel] text-2xl font-semibold text-navy sm:text-3xl">
               My Requirements
             </h1>
 
-            <p className="mt-3 max-w-2xl font-[Fauna_One] text-sm leading-6 text-white/65">
+            <p className="mt-3 max-w-2xl font-[Fauna_One] text-sm leading-6" style={{ color: "#6E6658" }}>
               Define what your pharmacy needs, track supplier responses and
               move the right opportunities toward a business connection.
             </p>
@@ -531,7 +530,10 @@ export default function RequirementsPage() {
                 <button
                   key={tab.key}
                   type="button"
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => {
+                    setLoadError("");
+                    setActiveTab(tab.key);
+                  }}
                   className="shrink-0 rounded-xl px-3.5 py-2.5 font-[Unica_One] text-[10px] uppercase tracking-[0.08em] transition-all duration-200"
                   style={{
                     backgroundColor: active
@@ -618,7 +620,15 @@ export default function RequirementsPage() {
       </div>
 
       {/* RESULTS */}
-      {!items ? (
+      {loadError ? (
+        <ErrorState
+          message={loadError}
+          onRetry={() => {
+            setLoadError("");
+            setReloadCount((count) => count + 1);
+          }}
+        />
+      ) : !items || loadedTab !== activeTab ? (
         <div className="flex min-h-[280px] items-center justify-center rounded-2xl border bg-white">
           <Loader />
         </div>
@@ -688,4 +698,3 @@ export default function RequirementsPage() {
 function MessageSquareIcon(props) {
   return <PackageSearch {...props} />;
 }
-

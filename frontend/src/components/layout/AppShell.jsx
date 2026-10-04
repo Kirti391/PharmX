@@ -2,7 +2,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 import {
-  Bell,
   LogOut,
   Menu,
   X,
@@ -33,6 +32,9 @@ export function AppShell({ children }) {
 
   const [unread, setUnread] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    window.matchMedia("(max-width: 767px)").matches
+  );
 
   /*
    * Desktop sidebar state.
@@ -47,8 +49,14 @@ export function AppShell({ children }) {
       return false;
     }
   });
+  const sidebarCollapsed = collapsed && !isMobileViewport;
 
   const isAdmin = user?.role === "ADMIN";
+  const isConversationPage = location.pathname.startsWith("/messages/");
+  const isAdminRoute = location.pathname.startsWith("/admin/");
+  const hasPageSpacing =
+    location.pathname !== "/dashboard" &&
+    !isConversationPage;
   const {
     primary: primaryItems,
     secondary: secondaryItems,
@@ -100,6 +108,15 @@ export function AppShell({ children }) {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const updateViewport = (event) => setIsMobileViewport(event.matches);
+
+    mediaQuery.addEventListener("change", updateViewport);
+
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
 
   /* =======================================================
      ESCAPE KEY
@@ -158,10 +175,10 @@ export function AppShell({ children }) {
     return (
       <Link
         to={item.href}
-        title={collapsed ? item.label : undefined}
+        title={sidebarCollapsed ? item.label : undefined}
         className={[
           "group relative flex items-center rounded-lg transition-all duration-200",
-          collapsed
+          sidebarCollapsed
             ? "justify-center px-0 py-3"
             : "gap-3 px-3 py-2.5",
           "font-[Fauna_One] text-[11px]",
@@ -176,7 +193,7 @@ export function AppShell({ children }) {
           <span
             className={[
               "absolute rounded-full bg-[#D83F87]",
-              collapsed
+              sidebarCollapsed
                 ? "left-1 top-2 bottom-2 w-[2px]"
                 : "left-0 top-2 bottom-2 w-[2px]",
             ].join(" ")}
@@ -198,7 +215,7 @@ export function AppShell({ children }) {
 
         {/* Label */}
 
-        {!collapsed && (
+        {!sidebarCollapsed && (
           <span className="min-w-0 flex-1 truncate">
             {item.label}
           </span>
@@ -206,7 +223,7 @@ export function AppShell({ children }) {
 
         {/* Notification badge */}
 
-        {!collapsed &&
+        {!sidebarCollapsed &&
           item.href === "/notifications" &&
           unread > 0 && (
             <span
@@ -230,7 +247,7 @@ export function AppShell({ children }) {
 
         {/* Collapsed notification dot */}
 
-        {collapsed &&
+        {sidebarCollapsed &&
           item.href === "/notifications" &&
           unread > 0 && (
             <span
@@ -246,41 +263,12 @@ export function AppShell({ children }) {
             />
           )}
 
-        {/* Collapsed tooltip */}
-
-        {collapsed && (
-          <span
-            className="
-              pointer-events-none
-              absolute
-              left-[calc(100%+12px)]
-              z-[100]
-              hidden
-              whitespace-nowrap
-              rounded-md
-              bg-[#2A1B3D]
-              px-3
-              py-2
-              font-[Fauna_One]
-              text-[10px]
-              text-white
-              opacity-0
-              shadow-lg
-              transition-opacity
-              duration-150
-              group-hover:opacity-100
-              md:block
-            "
-          >
-            {item.label}
-          </span>
-        )}
       </Link>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FCFAF8] text-[#2A1B3D]">
+    <div className={`min-h-screen ${isAdmin ? "admin-shell" : "bg-[#FCFAF8] text-[#2A1B3D]"}`}>
       {/* ===================================================
           MOBILE BACKDROP
       =================================================== */}
@@ -306,12 +294,14 @@ export function AppShell({ children }) {
       =================================================== */}
 
       <aside
+        id="workspace-sidebar"
+        aria-label="Workspace navigation"
         className={[
-          "fixed inset-y-0 left-0 z-50 flex flex-col",
+          "fixed inset-y-0 left-0 z-50 flex flex-col overflow-x-hidden overflow-y-auto",
           "border-r border-[#E8E3E6] bg-[#FCFAF8]",
           "transition-[width,transform] duration-300 ease-out",
           collapsed ? "md:w-[76px]" : "md:w-[250px]",
-          "w-[250px]",
+          "w-screen max-w-full",
           mobileOpen
             ? "translate-x-0"
             : "-translate-x-full md:translate-x-0",
@@ -324,16 +314,16 @@ export function AppShell({ children }) {
         <div
           className={[
             "shrink-0 transition-all duration-300",
-            collapsed
+            sidebarCollapsed
               ? "px-3 pt-7 pb-6"
               : "px-7 pt-8 pb-7",
           ].join(" ")}
         >
           <Link
-            to={isAdmin ? "/admin/dashboard" : "/dashboard"}
+            to="/"
             className={[
               "group flex items-center",
-              collapsed
+              sidebarCollapsed
                 ? "justify-center"
                 : "gap-3",
             ].join(" ")}
@@ -366,7 +356,7 @@ export function AppShell({ children }) {
 
             {/* Brand text */}
 
-            {!collapsed && (
+            {!sidebarCollapsed && (
               <div className="min-w-0">
                 <div
                   className="
@@ -406,7 +396,7 @@ export function AppShell({ children }) {
             WORKSPACE IDENTITY
         ================================================= */}
 
-        {!isAdmin && !collapsed && (
+        {!isAdmin && !sidebarCollapsed && (
           <div className="px-6 pb-7">
             <div
               className="
@@ -458,7 +448,7 @@ export function AppShell({ children }) {
             COLLAPSED WORKSPACE DIVIDER
         ================================================= */}
 
-        {!isAdmin && collapsed && (
+        {!isAdmin && sidebarCollapsed && (
           <div className="mx-4 mb-5 h-px bg-[#E8E3E6]" />
         )}
 
@@ -468,13 +458,13 @@ export function AppShell({ children }) {
 
         <nav
           className={[
-            "flex-1 overflow-y-auto",
-            collapsed ? "px-3" : "px-5",
+            "min-w-0 flex-1 overflow-x-hidden overflow-y-auto",
+            sidebarCollapsed ? "px-3" : "px-5",
           ].join(" ")}
         >
           {/* Section label */}
 
-          {!collapsed && (
+          {!sidebarCollapsed && (
             <p
               className="
                 mb-3
@@ -510,13 +500,13 @@ export function AppShell({ children }) {
               <div
                 className={[
                   "h-px bg-[#E8E3E6]",
-                  collapsed
+                  sidebarCollapsed
                     ? "my-5"
                     : "my-7",
                 ].join(" ")}
               />
 
-              {!collapsed && (
+              {!sidebarCollapsed && (
                 <p
                   className="
                     mb-3
@@ -551,7 +541,7 @@ export function AppShell({ children }) {
         <div
           className={[
             "shrink-0",
-            collapsed
+            sidebarCollapsed
               ? "px-3 pb-5 pt-4"
               : "px-6 pb-6 pt-5",
           ].join(" ")}
@@ -559,7 +549,7 @@ export function AppShell({ children }) {
           <div
             className={[
               "border-t border-[#E8E3E6]",
-              collapsed ? "pt-4" : "pt-5",
+              sidebarCollapsed ? "pt-4" : "pt-5",
             ].join(" ")}
           >
             {/* User */}
@@ -567,7 +557,7 @@ export function AppShell({ children }) {
             <Link
               to={isAdmin ? "/admin/dashboard" : "/profile"}
               title={
-                collapsed
+                sidebarCollapsed
                   ? isAdmin
                     ? "Administration"
                     : user?.email || "Profile"
@@ -575,7 +565,8 @@ export function AppShell({ children }) {
               }
               className={[
                 "group flex items-center rounded-xl transition-colors duration-200 hover:bg-white",
-                collapsed
+                isAdmin ? "admin-user-link" : "",
+                sidebarCollapsed
                   ? "justify-center px-1 py-2"
                   : "gap-3 px-2 py-2",
               ].join(" ")}
@@ -598,7 +589,7 @@ export function AppShell({ children }) {
                 {userInitials(user?.name || user?.email)}
               </div>
 
-              {!collapsed && (
+              {!sidebarCollapsed && (
                 <div className="min-w-0 flex-1">
                   <p
                     className="
@@ -635,10 +626,10 @@ export function AppShell({ children }) {
             <button
               type="button"
               onClick={logout}
-              title={collapsed ? "Log out" : undefined}
+              title={sidebarCollapsed ? "Log out" : undefined}
               className={[
                 "group mt-3 flex font-[Unica_One] text-[9px] uppercase tracking-[0.14em] text-[#A4B3B6] transition-colors duration-200 hover:text-[#D83F87]",
-                collapsed
+                sidebarCollapsed
                   ? "w-full justify-center px-2"
                   : "w-full items-center gap-2 px-2",
               ].join(" ")}
@@ -648,36 +639,8 @@ export function AppShell({ children }) {
                 strokeWidth={1.6}
               />
 
-              {!collapsed && <span>Log out</span>}
+              {!sidebarCollapsed && <span>Log out</span>}
 
-              {collapsed && (
-                <span
-                  className="
-                    pointer-events-none
-                    absolute
-                    left-[88px]
-                    hidden
-                    whitespace-nowrap
-                    rounded-md
-                    bg-[#2A1B3D]
-                    px-3
-                    py-2
-                    font-[Fauna_One]
-                    text-[10px]
-                    normal-case
-                    tracking-normal
-                    text-white
-                    opacity-0
-                    shadow-lg
-                    transition-opacity
-                    duration-150
-                    group-hover:opacity-100
-                    md:block
-                  "
-                >
-                  Log out
-                </span>
-              )}
             </button>
           </div>
         </div>
@@ -700,7 +663,7 @@ export function AppShell({ children }) {
               : "Collapse sidebar"
           }
           className={[
-            "absolute -right-3 top-[92px] z-50",
+            "absolute right-3 top-[92px] z-50",
             "hidden h-7 w-7 items-center justify-center",
             "rounded-full border border-[#E8E3E6]",
             "bg-[#FCFAF8] text-[#A4B3B6]",
@@ -756,7 +719,7 @@ export function AppShell({ children }) {
 
       <div
         className={[
-          "min-h-screen transition-[padding] duration-300 ease-out",
+          "min-h-screen min-w-0 overflow-x-clip transition-[padding] duration-300 ease-out",
           collapsed
             ? "md:pl-[76px]"
             : "md:pl-[250px]",
@@ -774,7 +737,7 @@ export function AppShell({ children }) {
             flex
             h-[62px]
             items-center
-            justify-between
+            justify-start
             border-b
             border-[#E8E3E6]
             bg-[#FCFAF8]/95
@@ -801,68 +764,36 @@ export function AppShell({ children }) {
               hover:bg-white
               hover:text-[#D83F87]
             "
+            aria-expanded={mobileOpen}
+            aria-controls="workspace-sidebar"
           >
             <Menu size={20} />
           </button>
 
-          {/* Mobile brand */}
-
-          <Link
-            to={isAdmin ? "/admin/dashboard" : "/dashboard"}
-            className="
-              font-[Cinzel]
-              text-[18px]
-              font-semibold
-              tracking-wide
-              text-[#2A1B3D]
-            "
-          >
-            Pharm
-            <span className="text-[#D83F87]">
-              Unis
-            </span>
-          </Link>
-
-          {/* Notifications */}
-
-          <Link
-            to="/notifications"
-            aria-label="Notifications"
-            className="
-              relative
-              p-2
-              text-[#2A1B3D]
-              transition-colors
-              hover:text-[#D83F87]
-            "
-          >
-            <Bell
-              size={18}
-              strokeWidth={1.7}
-            />
-
-            {unread > 0 && (
-              <span
-                className="
-                  absolute
-                  right-1
-                  top-1
-                  h-2
-                  w-2
-                  rounded-full
-                  bg-[#D83F87]
-                "
-              />
-            )}
-          </Link>
         </header>
 
         {/* =================================================
             PAGE CONTENT
         ================================================= */}
 
-        <main className="min-h-screen bg-[#FCFAF8]">
-          {children}
+        <main
+          className={[
+            `min-w-0 overflow-x-clip ${isAdminRoute ? "admin-main" : "bg-[#FCFAF8]"}`,
+            isConversationPage
+              ? "h-[calc(100dvh-62px)] min-h-0 md:h-screen"
+              : "min-h-screen",
+          ].join(" ")}
+        >
+          <div
+            className={[
+              "mx-auto w-full max-w-[1440px]",
+              hasPageSpacing
+                ? "px-4 py-6 sm:px-7 sm:py-8 lg:px-10 lg:py-10"
+                : "",
+            ].join(" ")}
+          >
+            {children}
+          </div>
         </main>
       </div>
     </div>

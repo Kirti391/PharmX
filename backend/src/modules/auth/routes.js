@@ -1,4 +1,5 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const { asyncHandler, requireAuth } = require("../../common/middleware");
 const { ok, created, fail } = require("../../common/http");
 const {
@@ -10,8 +11,22 @@ const {
 } = require("./validation");
 const authService = require("./service");
 const User = require("../../models/User");
+const { recordAudit } = require("../../common/audit");
 
 const router = express.Router();
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    fail(
+      res,
+      429,
+      "ADMIN_LOGIN_RATE_LIMITED",
+      "Too many administrator sign-in attempts. Try again in 15 minutes."
+    ),
+});
 
 router.post(
   "/signup",
@@ -36,6 +51,48 @@ router.post(
 );
 
 router.post(
+  "/admin/login",
+  adminLoginLimiter,
+  asyncHandler(async (req, res) => {
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(res, 400, "VALIDATION_ERROR", "Email and password are required");
+    }
+    let result;
+    try {
+      result = await authService.login(parsed.data.email, parsed.data.password);
+    } catch (error) {
+      if (error.status === 401) {
+        await recordAudit({
+          action: "ADMIN_LOGIN_FAILED",
+          targetType: "AdminLogin",
+          targetId: "ADMIN_LOGIN",
+          ipAddress: req.ip,
+        });
+      }
+      throw error;
+    }
+    if (result.user.role !== "ADMIN") {
+      await authService.logout(result.tokens.refreshToken);
+      return fail(
+        res,
+        403,
+        "ADMIN_ACCOUNT_REQUIRED",
+        "This portal is for administrator accounts only"
+      );
+    }
+    await recordAudit({
+      userId: result.user.id,
+      action: "ADMIN_LOGIN_SUCCESS",
+      targetType: "AdminLogin",
+      targetId: result.user.id.toString(),
+      ipAddress: req.ip,
+    });
+    ok(res, result);
+  })
+);
+
+router.post(
   "/refresh",
   asyncHandler(async (req, res) => {
     const parsed = refreshSchema.safeParse(req.body);
@@ -49,7 +106,22 @@ router.post(
   "/logout",
   asyncHandler(async (req, res) => {
     const parsed = refreshSchema.safeParse(req.body);
-    if (parsed.success) await authService.logout(parsed.data.refreshToken);
+    if (parsed.success) {
+      const revoked = await authService.logout(parsed.data.refreshToken);
+      if (revoked) {
+        const userId = parsed.data.refreshToken.split(".").pop();
+        const user = await User.findById(userId).select("role");
+        if (user?.role === "ADMIN") {
+          await recordAudit({
+            userId: user._id,
+            action: "ADMIN_LOGOUT",
+            targetType: "AdminLogin",
+            targetId: user._id.toString(),
+            ipAddress: req.ip,
+          });
+        }
+      }
+    }
     ok(res, { done: true });
   })
 );

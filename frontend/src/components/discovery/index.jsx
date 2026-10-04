@@ -13,13 +13,13 @@ const TABS = [
 export function DiscoverTabs() {
   const location = useLocation();
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 mb-6">
+    <div className="mb-6 flex gap-2 overflow-x-auto rounded-2xl border border-[#E9E2EA] bg-white p-1.5 pb-2 shadow-[0_4px_16px_rgba(42,27,61,0.03)]">
       {TABS.map((t) => (
         <Link
           key={t.href}
           to={t.href}
-          className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            location.pathname === t.href ? "bg-navy text-white" : "bg-white text-taupedark hover:text-navy"
+          className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+            location.pathname === t.href ? "bg-primary text-white shadow-sm" : "text-[#6E6658] hover:bg-[#FCFAF8] hover:text-navy"
           }`}
         >
           {t.label}

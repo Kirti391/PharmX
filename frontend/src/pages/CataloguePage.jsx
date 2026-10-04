@@ -27,17 +27,17 @@ const EMPTY_PRODUCT = {
 
 function ProductCard({ product, onEdit, onStatusChange, canManage }) {
   return (
-    <Card className="flex h-full flex-col gap-3">
+    <Card className="group flex h-full flex-col gap-4 overflow-hidden border-[#E9E2EA] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(42,27,61,0.08)]">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h2 className="font-display text-lg font-semibold text-navy">{product.name}</h2>
-          <p className="mt-1 text-sm text-taupedark">{product.companyName || "Verified company"}</p>
+          <p className="mt-1 text-xs text-[#8C8496]">{product.companyName || "Verified company"}</p>
         </div>
         {canManage && <StatusBadge status={product.status} />}
       </div>
-      <p className="text-sm font-medium text-tealdeep">{product.category}</p>
+      <p className="inline-flex w-fit rounded-full bg-[#F8F2F5] px-3 py-1 font-nav text-[9px] uppercase tracking-[0.1em] text-primary">{product.category}</p>
       {(product.activeIngredient || product.strength || product.dosageForm || product.packSize) && (
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl bg-[#FCFAF8] p-4 text-xs">
           {[
             ["Ingredient", product.activeIngredient],
             ["Strength", product.strength],
@@ -47,17 +47,17 @@ function ProductCard({ product, onEdit, onStatusChange, canManage }) {
             .filter(([, value]) => value)
             .map(([label, value]) => (
               <div key={label}>
-                <dt className="text-taupe">{label}</dt>
-                <dd className="text-navy">{value}</dd>
+                <dt className="font-nav text-[8px] uppercase tracking-[0.1em] text-[#8C8496]">{label}</dt>
+                <dd className="mt-1 text-navy">{value}</dd>
               </div>
             ))}
         </dl>
       )}
       {product.description && (
-        <p className="whitespace-pre-wrap text-sm leading-6 text-taupedark">{product.description}</p>
+        <p className="whitespace-pre-wrap text-xs leading-6 text-[#6E6658]">{product.description}</p>
       )}
       {canManage && (
-        <div className="mt-auto flex flex-wrap gap-2 border-t border-taupedark/10 pt-3">
+        <div className="mt-auto flex flex-wrap gap-2 border-t border-[#E9E2EA] pt-4">
           <Button size="sm" variant="ghost" onClick={() => onEdit(product)}>Edit product</Button>
           {product.status === "PUBLISHED" ? (
             <Button size="sm" variant="ghost" onClick={() => onStatusChange(product, "ARCHIVED")}>Archive</Button>
@@ -189,11 +189,12 @@ export default function CataloguePage() {
   if (products === null) return <Loader />;
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <div className="space-y-7">
+      <header className="flex flex-wrap items-center justify-between gap-5 rounded-[22px] border border-[#E9E2EA] bg-white px-5 py-6 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:px-8">
         <div>
-          <h1 className="font-display text-2xl font-bold text-navy">Product catalogue</h1>
-          <p className="mt-1 max-w-2xl text-sm text-taupe">
+          <p className="font-nav text-[9px] uppercase tracking-[0.18em] text-primary">PharmUnis marketplace</p>
+          <h1 className="mt-2 font-display text-2xl font-semibold text-navy sm:text-3xl">Product catalogue</h1>
+          <p className="mt-2 max-w-2xl text-xs leading-6 text-[#6E6658]">
             Browse products published by verified pharmaceutical companies. This catalogue is informational only; PharmX does not process medicine orders, prescriptions, inventory, or payments.
           </p>
         </div>
@@ -206,8 +207,8 @@ export default function CataloguePage() {
 
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
-      <Card>
-        <form onSubmit={applyFilters} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_240px_auto]">
+      <Card className="border-[#E9E2EA] p-5 sm:p-6">
+        <form onSubmit={applyFilters} className="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_240px_auto]">
           <div>
             <Label htmlFor="catalogue-search">Search products</Label>
             <Input id="catalogue-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, ingredient, or description" maxLength={100} />
@@ -266,8 +267,8 @@ export default function CataloguePage() {
       )}
 
       {isCompany && (
-        <section className="space-y-3">
-          <h2 className="font-display text-lg font-semibold text-navy">Your catalogue ({myProducts.length})</h2>
+        <section className="space-y-4">
+          <h2 className="border-l-[3px] border-primary pl-3 font-display text-lg font-semibold text-navy">Your catalogue <span className="font-nav text-xs text-[#8C8496]">({myProducts.length})</span></h2>
           {myProducts.length === 0 ? (
             <Card><EmptyState title="No products yet" subtitle="Add product details as a draft, then publish them after your company is verified." /></Card>
           ) : (
@@ -280,8 +281,8 @@ export default function CataloguePage() {
         </section>
       )}
 
-      <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold text-navy">Published products ({products.length})</h2>
+      <section className="space-y-4">
+        <h2 className="border-l-[3px] border-purple pl-3 font-display text-lg font-semibold text-navy">Published products <span className="font-nav text-xs text-[#8C8496]">({products.length})</span></h2>
         {products.length === 0 ? (
           <Card><EmptyState title="No published products found" subtitle="Try another search or category, or check back after companies publish their catalogues." /></Card>
         ) : (

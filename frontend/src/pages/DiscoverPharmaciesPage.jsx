@@ -22,9 +22,9 @@ const COLORS = {
   navy: "#2A1B3D",
   purple: "#44318D",
   coral: "#E98074",
-  muted: "#A4B3B6",
-  background: "#F8F7F9",
-  border: "#E9E6EC",
+  muted: "#8C8496",
+  background: "#FCFAF8",
+  border: "#E9E2EA",
 };
 
 function getInitials(name) {
@@ -127,13 +127,13 @@ export default function DiscoverPharmaciesPage() {
   }, [items, user?.id]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-[22px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:flex-row sm:items-center sm:justify-between sm:p-7">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl"
               style={{
                 backgroundColor: `${COLORS.purple}12`,
                 color: COLORS.purple,
@@ -143,7 +143,7 @@ export default function DiscoverPharmaciesPage() {
             </div>
 
             <h1
-              className="font-display text-2xl font-bold"
+              className="font-display text-2xl font-semibold sm:text-3xl"
               style={{ color: COLORS.navy }}
             >
               Discover
@@ -151,7 +151,7 @@ export default function DiscoverPharmaciesPage() {
           </div>
 
           <p
-            className="mt-2 max-w-2xl text-sm leading-6"
+            className="mt-2 max-w-2xl text-xs leading-6"
             style={{ color: "#6E6658" }}
           >
             Explore verified healthcare partners and build
@@ -163,7 +163,7 @@ export default function DiscoverPharmaciesPage() {
           type="button"
           onClick={() => load({ silent: true })}
           disabled={refreshing}
-          className="inline-flex items-center justify-center gap-2 self-start rounded-xl border bg-white px-3.5 py-2 text-sm font-medium transition hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 self-start rounded-full border bg-white px-4 py-2.5 text-xs font-medium transition hover:border-[#D83F87]/30 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
           style={{
             borderColor: COLORS.border,
             color: COLORS.navy,
@@ -182,7 +182,7 @@ export default function DiscoverPharmaciesPage() {
 
       {/* Context */}
       <div
-        className="rounded-2xl border p-4 sm:p-5"
+        className="rounded-[20px] border p-5 shadow-[0_6px_22px_rgba(42,27,61,0.03)] sm:p-6"
         style={{
           borderColor: COLORS.border,
           backgroundColor: "#FFFFFF",
@@ -221,7 +221,7 @@ export default function DiscoverPharmaciesPage() {
 
       {/* Filters */}
       <div
-        className="rounded-2xl border p-4"
+        className="rounded-[20px] border p-5 shadow-[0_6px_22px_rgba(42,27,61,0.03)] sm:p-6"
         style={{
           borderColor: COLORS.border,
           backgroundColor: "#FFFFFF",
@@ -463,4 +463,3 @@ export default function DiscoverPharmaciesPage() {
     </div>
   );
 }
-

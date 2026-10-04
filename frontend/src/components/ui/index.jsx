@@ -1,10 +1,10 @@
 import { forwardRef } from "react";
-import { Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
 
 const variants = {
-  primary: "bg-sage text-navy hover:opacity-90 shadow-sm",
-  secondary: "bg-tealdeep text-white hover:opacity-90 shadow-sm",
-  ghost: "bg-transparent text-navy hover:bg-navy/5 border border-navy/15",
+  primary: "bg-primary text-white hover:bg-[#c93679] shadow-sm",
+  secondary: "bg-purple text-white hover:bg-[#382778] shadow-sm",
+  ghost: "bg-transparent text-navy hover:bg-[#F8F2F5] border border-[#E9E2EA]",
   danger: "bg-red-500 text-white hover:opacity-90",
 };
 const sizes = {
@@ -30,7 +30,13 @@ export const Button = forwardRef(
 Button.displayName = "Button";
 
 export function Card({ className = "", children }) {
-  return <div className={`bg-white rounded-xl shadow-sm border border-taupedark/10 p-5 ${className}`}>{children}</div>;
+  return (
+    <div
+      className={`rounded-[20px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_26px_rgba(42,27,61,0.045)] ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function GlassCard({ className = "", children }) {
@@ -46,24 +52,24 @@ export function GlassCard({ className = "", children }) {
 
 const statusColors = {
   REQUESTED: "bg-amber-100 text-amber-800",
-  CONFIRMED: "bg-sage/20 text-tealdeep",
+  CONFIRMED: "bg-[#EFEBF9] text-purple",
   RUNNING_LATE: "bg-amber-100 text-amber-700",
   RESCHEDULE_REQUESTED: "bg-violet-100 text-violet-700",
   CANCELLED: "bg-red-100 text-red-600",
   EMERGENCY: "bg-red-100 text-red-600 animate-pulse",
-  COMPLETED: "bg-taupe/15 text-taupedark",
-  OPEN: "bg-sage/20 text-tealdeep",
-  CLOSED: "bg-taupe/15 text-taupedark",
-  FILLED: "bg-taupe/15 text-taupedark",
+  COMPLETED: "bg-[#EDF6F0] text-[#32734D]",
+  OPEN: "bg-[#F8F2F5] text-primary",
+  CLOSED: "bg-[#F1EEF2] text-[#6E6658]",
+  FILLED: "bg-[#F1EEF2] text-[#6E6658]",
   MATCHED: "bg-violet-100 text-violet-700",
   PENDING: "bg-amber-100 text-amber-700",
-  ACCEPTED: "bg-sage/20 text-tealdeep",
+  ACCEPTED: "bg-[#EDF6F0] text-[#32734D]",
   DECLINED: "bg-red-100 text-red-600",
-  ACTIVE: "bg-sage/20 text-tealdeep",
+  ACTIVE: "bg-[#EDF6F0] text-[#32734D]",
   PENDING_VERIFICATION: "bg-amber-100 text-amber-700",
   SUSPENDED: "bg-red-100 text-red-600",
   REJECTED: "bg-red-100 text-red-600",
-  APPROVED: "bg-sage/20 text-tealdeep",
+  APPROVED: "bg-[#EDF6F0] text-[#32734D]",
 };
 
 const statusLabels = {
@@ -74,7 +80,7 @@ const statusLabels = {
 };
 
 export function StatusBadge({ status }) {
-  const classes = statusColors[status] || "bg-taupe/15 text-taupedark";
+  const classes = statusColors[status] || "bg-[#EFEBF9] text-purple";
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${classes}`}>
       {statusLabels[status] || status.replaceAll("_", " ")}
@@ -83,15 +89,15 @@ export function StatusBadge({ status }) {
 }
 
 export function Label(props) {
-  return <label {...props} className={`block text-sm font-medium text-taupedark mb-1.5 ${props.className || ""}`} />;
+  return <label {...props} className={`mb-1.5 block text-sm font-medium text-navy ${props.className || ""}`} />;
 }
 
 export function Input(props) {
   return (
     <input
       {...props}
-      className={`w-full rounded-lg border border-taupedark/20 px-3.5 py-2.5 text-sm outline-none
-        focus:border-sage focus:ring-2 focus:ring-sage/30 transition-all ${props.className || ""}`}
+      className={`w-full rounded-xl border border-[#E5DEE7] bg-white px-3.5 py-2.5 text-sm text-navy outline-none
+        transition-all placeholder:text-[#9A929F] focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F8F6F8] disabled:text-[#77707D] ${props.className || ""}`}
     />
   );
 }
@@ -100,8 +106,8 @@ export function TextArea(props) {
   return (
     <textarea
       {...props}
-      className={`w-full rounded-lg border border-taupedark/20 px-3.5 py-2.5 text-sm outline-none
-        focus:border-sage focus:ring-2 focus:ring-sage/30 transition-all resize-none ${props.className || ""}`}
+      className={`w-full resize-none rounded-xl border border-[#E5DEE7] bg-white px-3.5 py-2.5 text-sm text-navy outline-none
+        transition-all placeholder:text-[#9A929F] focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F8F6F8] disabled:text-[#77707D] ${props.className || ""}`}
     />
   );
 }
@@ -110,8 +116,8 @@ export function Select(props) {
   return (
     <select
       {...props}
-      className={`w-full rounded-lg border border-taupedark/20 px-3.5 py-2.5 text-sm outline-none bg-white
-        focus:border-sage focus:ring-2 focus:ring-sage/30 transition-all ${props.className || ""}`}
+      className={`w-full rounded-xl border border-[#E5DEE7] bg-white px-3.5 py-2.5 text-sm text-navy outline-none
+        transition-all focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F8F6F8] disabled:text-[#77707D] ${props.className || ""}`}
     />
   );
 }
@@ -129,6 +135,43 @@ export function Loader() {
   return (
     <div className="flex items-center justify-center py-10">
       <Loader2 className="animate-spin text-sage" size={28} />
+    </div>
+  );
+}
+
+export function ErrorState({
+  title = "Unable to load this page",
+  message,
+  onRetry,
+}) {
+  return (
+    <div
+      role="alert"
+      className="rounded-xl border border-[#F1D8D0] bg-[#FCF4F0] p-4 sm:p-5"
+    >
+      <div className="flex items-start gap-3">
+        <AlertCircle
+          size={18}
+          className="mt-0.5 shrink-0 text-[#B9534B]"
+          aria-hidden="true"
+        />
+        <div className="min-w-0 flex-1">
+          <h2 className="font-medium text-[#2A1B3D]">{title}</h2>
+          {message && (
+            <p className="mt-1 text-sm leading-6 text-[#6E6658]">{message}</p>
+          )}
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[#E98074]/30 bg-white px-3 py-2 text-sm font-medium text-[#44318D] transition-colors hover:bg-[#F7F5FA]"
+            >
+              <RefreshCw size={14} aria-hidden="true" />
+              Try again
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

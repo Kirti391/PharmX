@@ -28,6 +28,7 @@ import {
   Loader,
   StatusBadge,
   Button,
+  TextArea,
 } from "../components/ui";
 import { ConnectButton } from "../components/discovery";
 
@@ -36,9 +37,9 @@ const colors = {
   purple: "#44318D",
   pink: "#D83F87",
   coral: "#E98074",
-  muted: "#A4B3B6",
-  background: "#F8F7F9",
-  border: "#E9E6EC",
+  muted: "#8C8496",
+  background: "#FCFAF8",
+  border: "#E9E2EA",
 };
 
 /*
@@ -233,6 +234,16 @@ export default function RequirementDetailPage() {
   const [matchesPrivate, setMatchesPrivate] =
     useState(false);
 
+  const [responses, setResponses] = useState(null);
+
+  const [myResponse, setMyResponse] = useState(undefined);
+
+  const [responseMessage, setResponseMessage] = useState("");
+
+  const [responseError, setResponseError] = useState("");
+
+  const [submittingResponse, setSubmittingResponse] = useState(false);
+
   const [loadingDelete, setLoadingDelete] =
     useState(false);
 
@@ -278,6 +289,9 @@ export default function RequirementDetailPage() {
         setMatches(null);
         setMatchesPrivate(false);
         setSelectedMatch(null);
+        setResponses(null);
+        setMyResponse(undefined);
+        setResponseError("");
 
         const requirementData =
           await http.get(
@@ -315,7 +329,42 @@ export default function RequirementDetailPage() {
         if (!owner) {
           setMatchesPrivate(true);
           setMatches(null);
+          if (requirementData?.isTargetRole) {
+            try {
+              const ownResponse = await http.get(
+                `/requirements/${id}/my-response`
+              );
+              if (mounted) setMyResponse(ownResponse);
+            } catch (responseLoadError) {
+              if (mounted) {
+                setResponseError(
+                  apiErrorMessage(
+                    responseLoadError,
+                    "Unable to check your existing response."
+                  )
+                );
+              }
+            }
+          }
           return;
+        }
+
+        try {
+          const responseRows = await http.get(
+            `/requirements/${id}/responses`
+          );
+          if (mounted) {
+            setResponses(Array.isArray(responseRows) ? responseRows : []);
+          }
+        } catch (responseLoadError) {
+          if (mounted) {
+            setResponseError(
+              apiErrorMessage(
+                responseLoadError,
+                "Unable to load supplier responses."
+              )
+            );
+          }
         }
 
         /*
@@ -427,6 +476,28 @@ export default function RequirementDetailPage() {
 
       setLoadingDelete(false);
       setDeleteOpen(false);
+    }
+  }
+
+  async function submitResponse(event) {
+    event.preventDefault();
+    if (submittingResponse || !responseMessage.trim()) return;
+
+    setSubmittingResponse(true);
+    setResponseError("");
+    try {
+      const response = await http.post(
+        `/requirements/${id}/responses`,
+        { message: responseMessage.trim() }
+      );
+      setMyResponse(response);
+      setResponseMessage("");
+    } catch (requestError) {
+      setResponseError(
+        apiErrorMessage(requestError, "Unable to send your response.")
+      );
+    } finally {
+      setSubmittingResponse(false);
     }
   }
 
@@ -1130,6 +1201,84 @@ export default function RequirementDetailPage() {
           </div>
         </Card>
 
+        {isOwner && (
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <MessageCircle size={18} style={{ color: colors.purple }} />
+                  <h2
+                    className="text-xl font-semibold"
+                    style={{ color: colors.navy, fontFamily: '"Cinzel", serif' }}
+                  >
+                    Supplier responses
+                  </h2>
+                </div>
+                <p
+                  className="mt-1 text-sm"
+                  style={{ color: colors.muted, fontFamily: '"Fauna One", serif' }}
+                >
+                  Replies from distributors and stockists are visible only to you.
+                </p>
+              </div>
+              {responses && (
+                <span
+                  className="rounded-full px-3 py-1 text-xs font-semibold"
+                  style={{
+                    backgroundColor: `${colors.purple}10`,
+                    color: colors.purple,
+                  }}
+                >
+                  {responses.length} {responses.length === 1 ? "response" : "responses"}
+                </span>
+              )}
+            </div>
+
+            {responseError && (
+              <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {responseError}
+              </p>
+            )}
+
+            {responses === null ? (
+              <Loader />
+            ) : responses.length === 0 ? (
+              <Card className="border" style={{ backgroundColor: "#fff", borderColor: colors.border }}>
+                <p className="py-5 text-center text-sm" style={{ color: colors.muted }}>
+                  No suppliers have responded yet.
+                </p>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {responses.map((response) => (
+                  <Card
+                    key={response.id}
+                    className="border"
+                    style={{ backgroundColor: "#fff", borderColor: colors.border }}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold" style={{ color: colors.navy }}>
+                          {response.responder?.name || "Supplier"}
+                        </p>
+                        <p className="mt-1 text-xs" style={{ color: colors.muted }}>
+                          {(response.responder?.role || "DISTRIBUTOR_STOCKIST").replaceAll("_", " ")}
+                          {" · "}
+                          {format(new Date(response.createdAt), "d MMM yyyy, p")}
+                        </p>
+                      </div>
+                      <StatusBadge status={response.status} />
+                    </div>
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6" style={{ color: colors.navy }}>
+                      {response.message}
+                    </p>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* ============================================================
             MATCHING WORKSPACE
             ============================================================ */}
@@ -1682,8 +1831,7 @@ export default function RequirementDetailPage() {
                   }}
                 >
                   {targetRole &&
-                  currentUserRole ===
-                    targetRole
+                  currentUserRole === targetRole
                     ? "Requirement available to your role"
                     : "Requirement matching is private"}
                 </h2>
@@ -1698,13 +1846,54 @@ export default function RequirementDetailPage() {
                   }}
                 >
                   {targetRole &&
-                  currentUserRole ===
-                    targetRole
+                  currentUserRole === targetRole
                     ? `This requirement is intended for ${getTargetRoleLabel(
                         targetRole
-                      ).toLowerCase()}. Matching profiles, scores and matching reasons are private to the pharmacy that posted the requirement.`
+                      ).toLowerCase()}. Respond to the pharmacy with the supply capability or availability you can provide.`
                     : "Matching profiles, match scores and matching reasons are visible only to the requirement owner."}
                 </p>
+                {currentUserRole === "DISTRIBUTOR_STOCKIST" &&
+                  requirement.isTargetRole &&
+                  requirement.status === "OPEN" &&
+                  (myResponse ? (
+                    <div className="mt-6 w-full max-w-lg rounded-2xl border p-4 text-left" style={{ borderColor: colors.border }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold" style={{ color: colors.navy }}>Your response</p>
+                        <StatusBadge status={myResponse.status} />
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6" style={{ color: colors.muted }}>
+                        {myResponse.message}
+                      </p>
+                    </div>
+                  ) : (
+                    <form onSubmit={submitResponse} className="mt-6 w-full max-w-lg text-left">
+                      <label htmlFor="requirement-response" className="mb-2 block text-sm font-semibold" style={{ color: colors.navy }}>
+                        Tell the pharmacy how you can help
+                      </label>
+                      <TextArea
+                        id="requirement-response"
+                        required
+                        minLength={5}
+                        maxLength={2000}
+                        rows={4}
+                        value={responseMessage}
+                        onChange={(event) => setResponseMessage(event.target.value)}
+                        placeholder="Share relevant product availability, service coverage, or ask a useful clarification."
+                      />
+                      <p className="mt-2 text-xs" style={{ color: colors.muted }}>
+                        Avoid sharing confidential pricing or patient information.
+                      </p>
+                      {responseError && (
+                        <p role="alert" className="mt-3 text-sm text-red-600">
+                          {responseError}
+                        </p>
+                      )}
+                      <Button type="submit" className="mt-4" loading={submittingResponse} disabled={Boolean(myResponse)}>
+                        <Send size={15} />
+                        Send response
+                      </Button>
+                    </form>
+                  ))}
               </div>
             </Card>
           </section>

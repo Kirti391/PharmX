@@ -16,7 +16,7 @@ function TagField({ label, values, onChange, placeholder }) {
       <Label>{label}</Label>
       <div className="flex flex-wrap gap-2 mb-2">
         {values.map((v) => (
-          <span key={v} className="bg-navy/5 text-navy text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5">
+          <span key={v} className="flex items-center gap-1.5 rounded-full bg-[#F8F2F5] px-3 py-1.5 text-xs text-navy">
             {v}
             <button type="button" onClick={() => onChange(values.filter((x) => x !== v))} className="text-taupe hover:text-red-500">
               ×
@@ -69,9 +69,13 @@ export default function OpportunityCreatePage() {
   }
 
   return (
-    <div className="max-w-xl">
-      <h1 className="font-display text-2xl font-bold text-navy mb-6">Post an opportunity</h1>
-      <Card>
+    <div className="max-w-2xl space-y-6">
+      <header className="rounded-[22px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:p-7">
+        <p className="font-nav text-[9px] uppercase tracking-[0.18em] text-primary">Professional network</p>
+        <h1 className="mt-2 font-display text-2xl font-semibold text-navy sm:text-3xl">Post an opportunity</h1>
+        <p className="mt-2 text-xs leading-6 text-[#6E6658]">Share a professional opportunity with relevant representatives and partners.</p>
+      </header>
+      <Card className="border-[#E9E2EA] p-5 sm:p-7">
         <form onSubmit={onSubmit} className="space-y-5">
           <div>
             <Label>Opportunity type</Label>

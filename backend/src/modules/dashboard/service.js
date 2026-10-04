@@ -103,6 +103,7 @@ async function enrichAppointment(
   return {
     id: appointment._id,
     scheduledAt: appointment.scheduledAt,
+    createdAt: appointment.createdAt,
     durationMinutes:
       appointment.durationMinutes,
     mode: appointment.mode,
@@ -143,7 +144,6 @@ async function getPharmacyDashboard(
       ],
     },
   };
-
   const [
     requirements,
     appointments,
@@ -373,6 +373,16 @@ async function getRoleDashboard(userId, role) {
       $nin: ["CANCELLED", "COMPLETED", "DECLINED"],
     },
   };
+  const doctorUpcomingAppointmentFilter = {
+    $or: [
+      { requesterId: userId },
+      { recipientId: userId },
+    ],
+    scheduledAt: { $gte: now },
+    status: {
+      $nin: ["CANCELLED", "COMPLETED", "DECLINED", "REQUESTED"],
+    },
+  };
   const requirementFilter = {
     status: "OPEN",
     $or: [
@@ -423,6 +433,7 @@ async function getRoleDashboard(userId, role) {
 
   const [
     appointments,
+    doctorAppointmentRequests,
     upcomingAppointments,
     pendingAppointments,
     connections,
@@ -440,10 +451,20 @@ async function getRoleDashboard(userId, role) {
     openLeads,
     dueFollowUps,
   ] = await Promise.all([
-    Appointment.find(appointmentFilter)
+    Appointment.find(role === "DOCTOR" ? doctorUpcomingAppointmentFilter : appointmentFilter)
       .sort({ scheduledAt: 1 })
       .limit(5),
-    Appointment.countDocuments(appointmentFilter),
+    role === "DOCTOR"
+      ? Appointment.find({
+          recipientId: userId,
+          status: "REQUESTED",
+        })
+          .sort({ createdAt: -1 })
+          .limit(5)
+      : Promise.resolve([]),
+    Appointment.countDocuments(
+      role === "DOCTOR" ? doctorUpcomingAppointmentFilter : appointmentFilter
+    ),
     role === "DOCTOR"
       ? Appointment.countDocuments({
           recipientId: userId,
@@ -542,6 +563,11 @@ async function getRoleDashboard(userId, role) {
     },
     appointments: await Promise.all(
       appointments.map((appointment) =>
+        enrichAppointment(appointment, userId)
+      )
+    ),
+    appointmentRequests: await Promise.all(
+      doctorAppointmentRequests.map((appointment) =>
         enrichAppointment(appointment, userId)
       )
     ),

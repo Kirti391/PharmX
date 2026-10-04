@@ -183,11 +183,12 @@ async function refresh(refreshToken) {
 
 async function logout(refreshToken) {
   const userId = refreshToken.split(".").pop();
-  if (!userId) return;
-  await RefreshToken.updateOne(
+  if (!userId) return false;
+  const result = await RefreshToken.updateOne(
     { userId, tokenHash: hashToken(refreshToken) },
     { $set: { revokedAt: new Date() } }
   );
+  return result.modifiedCount > 0;
 }
 
 async function forgotPassword(email) {
@@ -197,8 +198,10 @@ async function forgotPassword(email) {
   const resetToken = jwt.sign({ sub: user._id.toString(), purpose: "password_reset" }, env.jwtRefreshSecret, {
     expiresIn: "30m",
   });
-  // eslint-disable-next-line no-console
-  console.log(`[DEV RESET LINK] token for ${email}: ${resetToken}`);
+  if (env.nodeEnv === "development") {
+    // eslint-disable-next-line no-console
+    console.log(`[DEV RESET LINK] token for ${email}: ${resetToken}`);
+  }
   return { devResetToken: env.nodeEnv === "development" ? resetToken : undefined };
 }
 

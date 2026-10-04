@@ -1,9 +1,13 @@
 require("dotenv").config();
 
 function required(name, fallback) {
-  const value = process.env[name] ?? fallback;
-  if (!value) throw new Error(`Missing required env var: ${name}`);
-  return value;
+  const configuredValue = process.env[name];
+  if (configuredValue) return configuredValue;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(`Missing required env var: ${name}`);
+  }
+  if (fallback) return fallback;
+  throw new Error(`Missing required env var: ${name}`);
 }
 
 const env = {

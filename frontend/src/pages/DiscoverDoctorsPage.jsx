@@ -56,20 +56,20 @@ export default function DiscoverDoctorsPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <header className="mb-7">
+    <div className="mx-auto max-w-6xl space-y-7">
+      <header className="rounded-[22px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:p-7">
         <p className="font-nav text-[10px] uppercase tracking-[0.2em] text-[#D83F87]">
           Consent-based professional communication
         </p>
-        <h1 className="mt-2 font-display text-3xl font-semibold text-navy">
+        <h1 className="mt-2 font-display text-2xl font-semibold text-navy sm:text-3xl">
           Doctors accepting requests
         </h1>
-        <p className="mt-2 max-w-2xl font-body text-sm leading-6 text-taupe">
+        <p className="mt-2 max-w-2xl font-body text-xs leading-6 text-[#6E6658]">
           Only verified doctors who have opted in for your account type are listed. Every request must include its category and professional purpose.
         </p>
       </header>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="grid gap-3 rounded-[20px] border border-[#E9E2EA] bg-white p-4 shadow-[0_6px_22px_rgba(42,27,61,0.03)] sm:grid-cols-[minmax(0,1fr)_260px] sm:p-5">
         <Input
           type="search"
           value={search}
@@ -104,7 +104,7 @@ export default function DiscoverDoctorsPage() {
           <p className="font-display text-lg font-semibold text-navy">
             No opted-in doctors found
           </p>
-          <p className="mt-2 font-body text-sm text-taupe">
+          <p className="mt-2 font-body text-sm text-[#6E6658]">
             Try another category or location. Doctors appear here only after registration verification and explicit opt-in.
           </p>
         </Card>
@@ -121,13 +121,13 @@ export default function DiscoverDoctorsPage() {
             });
 
             return (
-              <Card key={doctor.id} className="flex flex-col">
+              <Card key={doctor.id} className="flex flex-col transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(42,27,61,0.08)]">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="font-display text-lg font-semibold text-navy">
                       {doctor.fullName}
                     </h2>
-                    <p className="mt-1 font-body text-sm text-taupe">
+                    <p className="mt-1 font-body text-sm text-[#6E6658]">
                       {[doctor.specialty, doctor.subspecialty]
                         .filter(Boolean)
                         .join(" · ") || "Registered medical practitioner"}
@@ -138,7 +138,7 @@ export default function DiscoverDoctorsPage() {
                       </p>
                     )}
                   </div>
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 font-nav text-[9px] uppercase tracking-wider text-emerald-800">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#EDF6F0] px-2.5 py-1 font-nav text-[9px] uppercase tracking-wider text-[#32734D]">
                     <BadgeCheck size={12} />
                     Verified & opted in
                   </span>
@@ -174,7 +174,7 @@ export default function DiscoverDoctorsPage() {
 
                 <div className="mt-auto pt-5">
                   <Link to={`/appointments?${appointmentUrl.toString()}`}>
-                    <span className="flex min-h-10 items-center justify-center rounded-lg bg-sage px-4 py-2.5 text-sm font-medium text-navy transition hover:opacity-90">
+                    <span className="flex min-h-10 items-center justify-center rounded-full bg-primary px-4 py-2.5 text-xs font-medium text-white transition hover:bg-[#c93679]">
                       Request professional appointment
                     </span>
                   </Link>

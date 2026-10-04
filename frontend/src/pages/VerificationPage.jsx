@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { http, api, apiErrorMessage } from "../lib/api";
-import { Card, EmptyState, Label, Loader, Select, StatusBadge } from "../components/ui";
+import { Card, EmptyState, ErrorState, Label, Loader, Select, StatusBadge } from "../components/ui";
 import { Button } from "../components/ui";
 import { format } from "date-fns";
 import { useAuthStore } from "../store/authStore";
@@ -34,12 +34,21 @@ export default function VerificationPage() {
   const [expiryDate, setExpiryDate] = useState("");
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
+  const [documentsError, setDocumentsError] = useState("");
+  const [documentsRetryCount, setDocumentsRetryCount] = useState(0);
   const [uploading, setUploading] = useState(false);
 
   function load() {
-    http.get("/verification/status").then(setDocs).catch(() => setDocs([]));
+    http
+      .get("/verification/status")
+      .then(setDocs)
+      .catch((requestError) => {
+        setDocumentsError(
+          apiErrorMessage(requestError, "Unable to load submitted documents.")
+        );
+      });
   }
-  useEffect(load, []);
+  useEffect(load, [documentsRetryCount]);
 
   useEffect(() => {
     if (!isMR) return;
@@ -82,6 +91,7 @@ export default function VerificationPage() {
       await api.post("/verification/documents", formData);
       setFile(null);
       setExpiryDate("");
+      setDocumentsError("");
       load();
     } catch (err) {
       setError(apiErrorMessage(err, "Upload failed"));
@@ -91,18 +101,21 @@ export default function VerificationPage() {
   }
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="font-display text-2xl font-bold text-navy mb-2">
-        {isDoctor ? "Professional Registration Verification" : "Business Verification"}
-      </h1>
-      <p className="text-taupe text-sm mb-6">
-        {isDoctor
-          ? "Submit your medical registration for review. Doctors are only discoverable for professional requests after registration is verified and they opt in."
-          : "Upload your business documents so an admin can verify your account. This unlocks the verified badge visible to other members."}
-      </p>
+    <div className="max-w-3xl space-y-6">
+      <header className="rounded-[22px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:p-7">
+        <p className="font-nav text-[9px] uppercase tracking-[0.18em] text-primary">Trust & safety</p>
+        <h1 className="mt-2 font-display text-2xl font-semibold text-navy sm:text-3xl">
+          {isDoctor ? "Professional Registration Verification" : "Business Verification"}
+        </h1>
+        <p className="mt-2 max-w-2xl text-xs leading-6 text-[#6E6658]">
+          {isDoctor
+            ? "Submit your medical registration for review. Doctors are only discoverable for professional requests after registration is verified and they opt in."
+            : "Upload your business documents so an admin can verify your account. This unlocks the verified badge visible to other members."}
+        </p>
+      </header>
 
-      <Card className="mb-8">
-        <form onSubmit={onSubmit} className="space-y-4">
+      <Card className="border-[#E9E2EA] p-5 sm:p-7">
+        <form onSubmit={onSubmit} className="space-y-5">
           <div>
             <Label>Document type</Label>
             <Select value={docType} onChange={(e) => setDocType(e.target.value)}>
@@ -128,7 +141,7 @@ export default function VerificationPage() {
                   </option>
                 ))}
               </Select>
-              <p className="mt-1 text-xs text-taupe">
+              <p className="mt-1 text-xs leading-5 text-[#6E6658]">
                 The authorization letter is reviewed by PharmX and matched to
                 this company before your request can be approved.
               </p>
@@ -143,9 +156,9 @@ export default function VerificationPage() {
                 min={new Date().toISOString().slice(0, 10)}
                 value={expiryDate}
                 onChange={(event) => setExpiryDate(event.target.value)}
-                className="w-full rounded-lg border border-taupedark/20 px-3.5 py-2.5 text-sm outline-none focus:border-sage focus:ring-2 focus:ring-sage/30"
+                className="w-full rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-3.5 py-2.5 text-sm text-navy outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
               />
-              <p className="mt-1 text-xs text-taupe">
+              <p className="mt-1 text-xs leading-5 text-[#6E6658]">
                 Expired licences and registrations cannot be approved or used for verified access.
               </p>
             </div>
@@ -169,26 +182,43 @@ export default function VerificationPage() {
         </form>
       </Card>
 
-      <h2 className="font-display font-semibold text-navy mb-4">Submitted documents</h2>
-      {!docs ? (
+      <h2 className="border-l-[3px] border-purple pl-3 font-display font-semibold text-navy">Submitted documents</h2>
+      {documentsError && docs && (
+        <ErrorState
+          message={documentsError}
+          onRetry={() => {
+            setDocumentsError("");
+            setDocumentsRetryCount((count) => count + 1);
+          }}
+        />
+      )}
+      {!docs && documentsError ? (
+        <ErrorState
+          message={documentsError}
+          onRetry={() => {
+            setDocumentsError("");
+            setDocumentsRetryCount((count) => count + 1);
+          }}
+        />
+      ) : !docs ? (
         <Loader />
       ) : docs.length === 0 ? (
-        <EmptyState title="No documents submitted yet" />
+        <Card className="border-[#E9E2EA]"><EmptyState title="No documents submitted yet" /></Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {docs.map((d) => (
-            <Card key={d.id}>
-              <div className="flex items-center justify-between">
+            <Card key={d.id} className="border-[#E9E2EA]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-navy">{d.docType.replaceAll("_", " ")}</p>
                   {d.companyId && (
-                    <p className="text-xs text-taupe">
+                    <p className="mt-1 text-xs text-[#6E6658]">
                       Company: {companies.find((company) => company.id === d.companyId)?.companyName || "Selected company"}
                     </p>
                   )}
-                  <p className="text-xs text-taupe">Submitted {format(new Date(d.createdAt), "d MMM yyyy")}</p>
+                  <p className="mt-1 text-xs text-[#8C8496]">Submitted {format(new Date(d.createdAt), "d MMM yyyy")}</p>
                   {d.expiryDate && (
-                    <p className="text-xs text-taupe">
+                    <p className="mt-1 text-xs text-[#8C8496]">
                       Expires {format(new Date(d.expiryDate), "d MMM yyyy")}
                     </p>
                   )}

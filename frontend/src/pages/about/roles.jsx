@@ -228,9 +228,9 @@ const StickyRoleCard = ({
 </span>
   </div>
 
-  <Link to="/signup">
-    <button
-      className="
+  <Link
+    to="/signup"
+    className="
         shrink-0
         rounded-lg
         border
@@ -255,9 +255,8 @@ const StickyRoleCard = ({
         md:py-3
         md:text-xs
       "
-    >
-      {role.action}
-    </button>
+  >
+    {role.action}
   </Link>
 </div>
       </motion.div>

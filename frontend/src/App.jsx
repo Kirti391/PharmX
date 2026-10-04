@@ -38,6 +38,10 @@ import CataloguePage from "./pages/CataloguePage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminVerificationsPage from "./pages/AdminVerificationsPage";
+import AdminAuthorizationsPage from "./pages/AdminAuthorizationsPage";
+import AdminReportsPage from "./pages/AdminReportsPage";
+import AdminAuditPage from "./pages/AdminAuditPage";
+import AdminProfilePage from "./pages/AdminProfilePage";
 
 function Protected({ children, adminOnly }) {
   return <ProtectedLayout adminOnly={adminOnly}>{children}</ProtectedLayout>;
@@ -302,6 +306,42 @@ export default function App() {
         element={
           <Protected adminOnly>
             <AdminVerificationsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/admin/authorizations"
+        element={
+          <Protected adminOnly>
+            <AdminAuthorizationsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/admin/reports"
+        element={
+          <Protected adminOnly>
+            <AdminReportsPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/admin/audit"
+        element={
+          <Protected adminOnly>
+            <AdminAuditPage />
+          </Protected>
+        }
+      />
+
+      <Route
+        path="/admin/profile"
+        element={
+          <Protected adminOnly>
+            <AdminProfilePage />
           </Protected>
         }
       />

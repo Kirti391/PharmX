@@ -15,7 +15,13 @@ import {
 
 export function ProcurementPanel({ items = [] }) {
   return (
-    <section className="min-w-0">
+    <section
+      className="min-w-0 rounded-[22px] border bg-white p-5 shadow-[0_10px_30px_rgba(42,27,61,0.04)] sm:p-6"
+      style={{
+        borderColor: SURFACE.hairline,
+        background: "linear-gradient(155deg, #FFFFFF 0%, #FFFCFA 100%)",
+      }}
+    >
       <PanelHeading
         eyebrow="Activity"
         eyebrowColor={SURFACE.coral}
@@ -31,7 +37,7 @@ export function ProcurementPanel({ items = [] }) {
         }
       />
 
-      <div className="mt-5">
+      <div className="mt-4">
         {items.length === 0 ? (
           <EmptyRow icon={Activity}>
             Nothing is scheduled or posted yet today. New
@@ -41,13 +47,15 @@ export function ProcurementPanel({ items = [] }) {
           items.map((item) => (
             <div
               key={item.id}
-              className="group flex items-start gap-3.5 border-b py-4"
+              className="group flex items-start gap-3.5 border-b py-4 last:border-b-0"
               style={{ borderColor: SURFACE.hairline }}
             >
               <span
-                className="mt-[7px] h-[7px] w-[7px] shrink-0 rounded-full transition-transform duration-200 group-hover:scale-150"
-                style={{ backgroundColor: item.accent }}
-              />
+                className="mt-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105"
+                style={{ backgroundColor: `${item.accent}18`, color: item.accent }}
+              >
+                <Activity size={14} strokeWidth={1.7} />
+              </span>
 
               <div className="min-w-0">
                 <p

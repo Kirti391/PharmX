@@ -1,4 +1,5 @@
 const express = require("express");
+const { z } = require("zod");
 const { asyncHandler, requireAuth } = require("../../common/middleware");
 const { ApiError, created, fail, ok } = require("../../common/http");
 const Conversation = require("../../models/Conversation");
@@ -88,26 +89,44 @@ async function assertMessagingPermission(userIds) {
 async function serializeConversation(c, currentUserId) {
   const otherId = c.participantIds.find((id) => id.toString() !== currentUserId) || c.participantIds[0];
   const other = otherId ? await User.findById(otherId) : null;
+  const lastMessage = await Message.findOne({ conversationId: c._id })
+    .sort({ createdAt: -1 });
   return {
     id: c._id,
     participantIds: c.participantIds,
     otherParticipant: other ? { userId: other._id, ...(await getDisplayProfile(other._id, other.role)) } : null,
     lastMessageAt: c.lastMessageAt,
+    lastMessage: lastMessage
+      ? {
+          body: lastMessage.deletedAt
+            ? "This message was deleted."
+            : lastMessage.body,
+          isDeleted: Boolean(lastMessage.deletedAt),
+          senderId: lastMessage.senderId,
+        }
+      : null,
     createdAt: c.createdAt,
   };
 }
 
 function serializeMessage(m) {
+  const isDeleted = Boolean(m.deletedAt);
   return {
     id: m._id,
     conversationId: m.conversationId,
     senderId: m.senderId,
-    body: m.body,
-    attachmentUrl: m.attachmentUrl,
+    body: isDeleted ? "This message was deleted." : m.body,
+    attachmentUrl: isDeleted ? null : m.attachmentUrl,
     readAt: m.readAt,
+    editedAt: m.editedAt,
+    isDeleted,
     createdAt: m.createdAt,
   };
 }
+
+const editMessageSchema = z.object({
+  body: z.string().trim().min(1).max(5000),
+});
 
 router.get(
   "/conversations",
@@ -164,6 +183,17 @@ function assertParticipant(conversation, userId) {
 }
 
 router.get(
+  "/conversations/:id",
+  asyncHandler(async (req, res) => {
+    const conversation = await Conversation.findById(req.params.id);
+    if (!conversation) return fail(res, 404, "NOT_FOUND", "Conversation not found");
+    const participantIds = assertParticipant(conversation, req.user.sub);
+    await assertMessagingPermission(participantIds);
+    ok(res, await serializeConversation(conversation, req.user.sub));
+  })
+);
+
+router.get(
   "/conversations/:id/messages",
   asyncHandler(async (req, res) => {
     const conversation = await Conversation.findById(req.params.id);
@@ -180,6 +210,89 @@ router.get(
 
     const rows = await Message.find(query).sort({ createdAt: -1 }).limit(50);
     ok(res, rows.map(serializeMessage).reverse());
+  })
+);
+
+router.patch(
+  "/conversations/:id/messages/:messageId",
+  asyncHandler(async (req, res) => {
+    const parsed = editMessageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(
+        res,
+        400,
+        "VALIDATION_ERROR",
+        parsed.error.issues[0]?.message || "Enter a message"
+      );
+    }
+
+    const conversation = await Conversation.findById(req.params.id);
+    if (!conversation) return fail(res, 404, "NOT_FOUND", "Conversation not found");
+    const participantIds = assertParticipant(conversation, req.user.sub);
+    await assertMessagingPermission(participantIds);
+
+    const message = await Message.findOne({
+      _id: req.params.messageId,
+      conversationId: conversation._id,
+    });
+    if (!message) return fail(res, 404, "NOT_FOUND", "Message not found");
+    if (message.senderId.toString() !== req.user.sub) {
+      throw new ApiError(403, "FORBIDDEN", "You can only edit your own messages");
+    }
+    if (message.deletedAt) {
+      throw new ApiError(409, "MESSAGE_DELETED", "Deleted messages cannot be edited");
+    }
+
+    message.body = parsed.data.body;
+    message.editedAt = new Date();
+    await message.save();
+
+    const serialized = serializeMessage(message);
+    emitRealtime({
+      type: "message:updated",
+      userIds: participantIds,
+      payload: serialized,
+    });
+    ok(res, serialized);
+  })
+);
+
+router.delete(
+  "/conversations/:id/messages/:messageId",
+  asyncHandler(async (req, res) => {
+    const conversation = await Conversation.findById(req.params.id);
+    if (!conversation) return fail(res, 404, "NOT_FOUND", "Conversation not found");
+    const participantIds = assertParticipant(conversation, req.user.sub);
+    await assertMessagingPermission(participantIds);
+
+    const message = await Message.findOne({
+      _id: req.params.messageId,
+      conversationId: conversation._id,
+    });
+    if (!message) return fail(res, 404, "NOT_FOUND", "Message not found");
+    if (message.senderId.toString() !== req.user.sub) {
+      throw new ApiError(403, "FORBIDDEN", "You can only delete your own messages");
+    }
+    if (message.deletedAt) {
+      throw new ApiError(409, "MESSAGE_DELETED", "This message has already been deleted");
+    }
+
+    message.deletedAt = new Date();
+    await message.save();
+    const latestMessage = await Message.findOne({
+      conversationId: conversation._id,
+      deletedAt: null,
+    }).sort({ createdAt: -1 });
+    conversation.lastMessageAt = latestMessage?.createdAt || null;
+    await conversation.save();
+
+    const serialized = serializeMessage(message);
+    emitRealtime({
+      type: "message:deleted",
+      userIds: participantIds,
+      payload: serialized,
+    });
+    ok(res, serialized);
   })
 );
 

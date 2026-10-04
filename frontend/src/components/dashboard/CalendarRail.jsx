@@ -64,18 +64,26 @@ export function CalendarRail({ appointments = [] }) {
   }
 
   return (
-    <section>
+    <section
+      className="rounded-[22px] border bg-white px-5 py-6 shadow-[0_10px_30px_rgba(42,27,61,0.04)] sm:px-6"
+      style={{ borderColor: SURFACE.hairline }}
+    >
       {/* =================================================
           CALENDAR
       ================================================= */}
 
       <div className="flex items-center justify-between">
-        <h2
-          className="font-editorial text-[19px] font-semibold"
-          style={{ color: SURFACE.ink }}
-        >
-          {format(month, "MMMM yyyy")}
-        </h2>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ backgroundColor: SURFACE.coralSoft, color: SURFACE.coral }}>
+            <CalendarDays size={16} strokeWidth={1.7} />
+          </span>
+          <h2
+            className="font-editorial text-[19px] font-semibold"
+            style={{ color: SURFACE.ink }}
+          >
+            {format(month, "MMMM yyyy")}
+          </h2>
+        </div>
 
         <div className="flex items-center gap-1">
           <button
@@ -100,7 +108,7 @@ export function CalendarRail({ appointments = [] }) {
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-7 gap-y-1 text-center">
+      <div className="mt-5 grid grid-cols-7 gap-y-1.5 text-center">
         {WEEKDAYS.map((day, index) => (
           <span
             key={`${day}-${index}`}
@@ -126,9 +134,9 @@ export function CalendarRail({ appointments = [] }) {
               onClick={() => setSelected(day)}
               aria-label={format(day, "dd MMMM yyyy")}
               aria-pressed={isSelected}
-              className="relative mx-auto flex h-9 w-9 items-center justify-center rounded-full font-body text-[11.5px] transition-all duration-200 hover:bg-[#F6F4F9]"
+              className="relative mx-auto flex h-9 w-9 items-center justify-center rounded-[13px] font-body text-[11.5px] transition-all duration-200 hover:bg-[#F6F4F9]"
               style={{
-                backgroundColor: isSelected ? SURFACE.pink : "transparent",
+                backgroundColor: isSelected ? SURFACE.pink : isToday ? SURFACE.purpleSoft : "transparent",
                 color: isSelected
                   ? "#FFFFFF"
                   : isSameMonth(day, month)
@@ -155,7 +163,7 @@ export function CalendarRail({ appointments = [] }) {
       ================================================= */}
 
       <div
-        className="mt-7 border-t pt-6"
+        className="mt-6 border-t pt-5"
         style={{ borderColor: SURFACE.hairline }}
       >
         <Eyebrow color={SURFACE.coral}>Upcoming</Eyebrow>
@@ -193,8 +201,8 @@ export function CalendarRail({ appointments = [] }) {
               >
                 <span className="min-w-0 flex-1">
                   <span
-                    className="workspace-label block"
-                    style={{ color: SURFACE.coral }}
+                    className="inline-flex rounded-full px-2 py-1 font-nav text-[8px] uppercase tracking-[0.1em]"
+                    style={{ backgroundColor: SURFACE.coralSoft, color: SURFACE.coral }}
                   >
                     {formatStamp(appointment.scheduledAt)} ·{" "}
                     {formatClock(appointment.scheduledAt)}

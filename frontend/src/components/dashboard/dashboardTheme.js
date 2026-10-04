@@ -22,6 +22,9 @@ export const SURFACE = {
   coralSoft: "#FBE4DE",
 
   navySoft: "#F3F0F7",
+  sectionCanvas: "#F7F5FA",
+  roseSoft: "#F5EBEB",
+  slate: "#A4B3B6",
   lavender: "#EDEAF7",
   peach: "#FBE3DC",
 

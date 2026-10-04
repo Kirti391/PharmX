@@ -2,15 +2,17 @@ import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { http, apiErrorMessage } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
-import { Card, EmptyState, Input, Label, Loader, Select, StatusBadge, TextArea } from "../components/ui";
+import { Card, EmptyState, ErrorState, Input, Label, Loader, Select, StatusBadge, TextArea } from "../components/ui";
 import { Button } from "../components/ui";
 import { format } from "date-fns";
 import { PRODUCT_CATEGORIES } from "../lib/constants";
+import { CalendarDays, Clock3 } from "lucide-react";
 
 export default function AppointmentsPage() {
   const [search] = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const [appointments, setAppointments] = useState(null);
+  const [appointmentLoadError, setAppointmentLoadError] = useState("");
   const [connections, setConnections] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [showForm, setShowForm] = useState(!!search.get("with"));
@@ -39,12 +41,26 @@ export default function AppointmentsPage() {
       : selectedDoctor?.communicationModes?.[0] || mode;
 
   function loadAppointments() {
-    http.get("/appointments").then(setAppointments).catch(() => setAppointments([]));
+    http
+      .get("/appointments")
+      .then(setAppointments)
+      .catch((requestError) => {
+        setAppointmentLoadError(
+          apiErrorMessage(requestError, "Unable to load appointments.")
+        );
+      });
   }
 
   useEffect(() => {
     loadAppointments();
-    http.get("/connections").then(setConnections).catch(() => setConnections([]));
+    http
+      .get("/connections")
+      .then(setConnections)
+      .catch((requestError) => {
+        setError(
+          apiErrorMessage(requestError, "Unable to load your connections.")
+        );
+      });
     if (["MR", "PHARMA_COMPANY"].includes(user?.role)) {
       http
         .get("/discover/doctors")
@@ -94,17 +110,32 @@ export default function AppointmentsPage() {
   const sorted = (appointments || []).slice().sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-2xl font-bold text-navy">Appointments</h1>
+    <div className="space-y-7">
+      <header className="flex flex-wrap items-center justify-between gap-4 rounded-[22px] border border-[#E9E2EA] bg-white px-5 py-6 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:px-8">
+        <div>
+          <p className="font-nav text-[9px] uppercase tracking-[0.18em] text-primary">Professional connections</p>
+          <h1 className="mt-2 font-display text-2xl font-semibold text-navy sm:text-3xl">Appointments</h1>
+          <p className="mt-2 text-xs leading-5 text-[#6E6658]">Plan and manage conversations with your healthcare partners.</p>
+        </div>
         {canRequestAppointment && (
-          <Button onClick={() => setShowForm((s) => !s)}>{showForm ? "Cancel" : "Book appointment"}</Button>
+          <Button className="rounded-full px-5" onClick={() => setShowForm((s) => !s)}>{showForm ? "Cancel" : "Book appointment"}</Button>
         )}
-      </div>
+      </header>
+      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+      {appointmentLoadError && (
+        <ErrorState
+          message={appointmentLoadError}
+          onRetry={() => {
+            setAppointments(null);
+            setAppointmentLoadError("");
+            loadAppointments();
+          }}
+        />
+      )}
 
       {showForm && canRequestAppointment && (
-        <Card className="mb-6">
-          <form onSubmit={onSubmit} className="space-y-4">
+        <Card className="border-[#E9E2EA] p-5 sm:p-7">
+          <form onSubmit={onSubmit} className="space-y-5">
             <div>
               <Label>With</Label>
               <Select
@@ -144,7 +175,7 @@ export default function AppointmentsPage() {
                 </p>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <Label>Date & time</Label>
                 <Input type="datetime-local" required value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
@@ -232,7 +263,6 @@ export default function AppointmentsPage() {
                 }
               />
             </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
             <Button type="submit" loading={loading}>
               Request appointment
             </Button>
@@ -243,21 +273,31 @@ export default function AppointmentsPage() {
       {!appointments ? (
         <Loader />
       ) : sorted.length === 0 ? (
-        <EmptyState title="No appointments yet" subtitle="Arrange meetings with accepted connections or submit a purpose-specific request to an opted-in doctor." />
+        <Card className="border-[#E9E2EA]">
+          <EmptyState title="No appointments yet" subtitle="Arrange meetings with accepted connections or submit a purpose-specific request to an opted-in doctor." />
+        </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {sorted.map((a) => {
             const other = a.requester?.userId === user?.id ? a.recipient : a.requester;
             return (
               <Link key={a.id} to={`/appointments/${a.id}`}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-navy">{other?.name ?? "Unknown"}</p>
-                      <p className="text-xs text-taupe">
-                        {format(new Date(a.scheduledAt), "EEE d MMM yyyy, h:mm a")} · {a.mode === "VIDEO" ? "Video call" : "Physical visit"}
+                <Card className="group border-[#E9E2EA] p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(42,27,61,0.08)] sm:p-5">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-2xl bg-[#F8F2F5] text-primary">
+                      <CalendarDays size={16} />
+                      <span className="mt-0.5 font-nav text-[8px] uppercase">{format(new Date(a.scheduledAt), "MMM")}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-display text-sm font-semibold text-navy">{other?.name ?? "Unknown"}</p>
+                      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#6E6658]">
+                        <span>{format(new Date(a.scheduledAt), "EEE d MMM yyyy")}</span>
+                        <span className="text-[#D7CED9]">·</span>
+                        <span className="inline-flex items-center gap-1"><Clock3 size={12} />{format(new Date(a.scheduledAt), "h:mm a")}</span>
+                        <span className="text-[#D7CED9]">·</span>
+                        <span>{a.mode === "VIDEO" ? "Video call" : "Physical visit"}</span>
                       </p>
-                      {a.disruptionReason && <p className="text-xs text-red-500 mt-1">Reason: {a.disruptionReason.toLowerCase()}</p>}
+                      {a.disruptionReason && <p className="mt-1 text-xs text-red-500">Reason: {a.disruptionReason.toLowerCase()}</p>}
                     </div>
                     <StatusBadge status={a.status} />
                   </div>

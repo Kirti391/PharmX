@@ -3,6 +3,23 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { http } from "./api";
 
+let currentUserRequest = null;
+
+function getCurrentUser(accessToken) {
+  if (currentUserRequest?.accessToken === accessToken) {
+    return currentUserRequest.promise;
+  }
+
+  const promise = http.get("/auth/me").finally(() => {
+    if (currentUserRequest?.promise === promise) {
+      currentUserRequest = null;
+    }
+  });
+  currentUserRequest = { accessToken, promise };
+
+  return promise;
+}
+
 export function useAuthGuard() {
   const navigate = useNavigate();
   const { user, accessToken, setUser, clear } = useAuthStore();
@@ -16,11 +33,13 @@ export function useAuthGuard() {
         return;
       }
       try {
-        const fresh = await http.get("/auth/me");
+        const fresh = await getCurrentUser(accessToken);
         if (!cancelled) setUser(fresh);
       } catch {
-        clear();
-        navigate("/login", { replace: true });
+        if (!cancelled) {
+          clear();
+          navigate("/login", { replace: true });
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -1,4 +1,5 @@
 node_modules/
-uploads/
+uploads/*
+!uploads/demo-verification-placeholder.txt
 .env
 *.log

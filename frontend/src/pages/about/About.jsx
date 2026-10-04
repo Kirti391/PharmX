@@ -4,7 +4,7 @@ import { UsersRound, ArrowRight } from "lucide-react";
 
 const About = () => {
   return (
-    <section className="min-h-screen bg-gradient-to-r from-[#2A1B3D] to-[#44318D] text-white px-6 md:px-12 lg:px-20 py-10">
+    <section id="about" className="min-h-screen bg-gradient-to-r from-[#2A1B3D] to-[#44318D] text-white px-6 md:px-12 lg:px-20 py-10">
 
       {/* Heading */}
     <div className="max-w-4xl mx-auto text-center mt-10 md:mt-20">
@@ -28,7 +28,8 @@ const About = () => {
       {/* Buttons */}
 <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mt-8 md:mt-12">
 
-        <button
+        <Link
+          to="/signup"
           className="
   flex items-center justify-center gap-2.5
   w-full sm:w-auto
@@ -41,13 +42,11 @@ const About = () => {
 "
         >
           <UsersRound size={19} strokeWidth={2} />
-          <span><Link to="/signup" >
-           Join PharmUnis
-          </Link></span>
-           
-        </button>
+          <span>Join PharmUnis</span>
+        </Link>
 
-        <button
+        <a
+          href="#footer"
           className="
             flex
             items-center
@@ -68,9 +67,9 @@ const About = () => {
             hover:shadow-xl
           "
         >
-          <span><a href="#footer">More About Us</a></span>
+          <span>More About Us</span>
           <ArrowRight size={19} strokeWidth={2} />
-        </button>
+        </a>
 
       </div>
 
@@ -79,4 +78,3 @@ const About = () => {
 };
 
 export default About;
-

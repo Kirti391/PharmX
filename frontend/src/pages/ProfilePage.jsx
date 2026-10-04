@@ -12,6 +12,7 @@ import {
   Pencil,
   Save,
   ShieldCheck,
+  Stethoscope,
   Store,
   Upload,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import { http, apiErrorMessage } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
 import {
   Card,
+  ErrorState,
   Input,
   Label,
   Select,
@@ -34,7 +36,7 @@ const COLORS = {
   navy: "#2A1B3D",
   purple: "#44318D",
   coral: "#E98074",
-  muted: "#A4B3B6",
+  muted: "#7D7582",
   background: "#F8F7F9",
   border: "#E9E6EC",
 };
@@ -221,12 +223,12 @@ function SectionHeader({
   description,
 }) {
   return (
-    <div className="mb-6 flex gap-4">
+    <div className="mb-6 flex gap-4 border-b pb-5" style={{ borderColor: COLORS.border }}>
       <div
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
         style={{
-          backgroundColor: "#FCE8F1",
-          color: COLORS.primary,
+          backgroundColor: "#F8F2F5",
+          color: COLORS.purple,
         }}
       >
         <Icon size={18} />
@@ -241,7 +243,7 @@ function SectionHeader({
         </p>
 
         <h2
-          className="mt-1 font-[Cinzel] text-base font-semibold"
+          className="mt-1 font-[Cinzel] text-[17px] font-semibold"
           style={{ color: COLORS.navy }}
         >
           {title}
@@ -249,7 +251,7 @@ function SectionHeader({
 
         {description && (
           <p
-            className="mt-1 max-w-2xl font-[Fauna_One] text-xs leading-5"
+            className="mt-1.5 max-w-2xl font-[Fauna_One] text-[11px] leading-5"
             style={{ color: COLORS.muted }}
           >
             {description}
@@ -369,6 +371,7 @@ function DoctorProfileForm() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [unblockingUserId, setUnblockingUserId] = useState("");
+  const [loadRetryCount, setLoadRetryCount] = useState(0);
 
   useEffect(() => {
     http
@@ -382,7 +385,7 @@ function DoctorProfileForm() {
           )
         )
       );
-  }, []);
+  }, [loadRetryCount]);
 
   useEffect(() => {
     http
@@ -398,7 +401,20 @@ function DoctorProfileForm() {
           )
         )
       );
-  }, []);
+  }, [loadRetryCount]);
+
+  if (!profile && error) {
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError("");
+          setLoadRetryCount((count) => count + 1);
+        }}
+      />
+    );
+  }
+  if (!profile) return <Loader />;
 
   function update(field, value) {
     setProfile((current) => ({ ...current, [field]: value }));
@@ -790,14 +806,30 @@ function MRProfileForm() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [loadRetryCount, setLoadRetryCount] = useState(0);
 
   useEffect(() => {
     http
       .get("/profiles/mr/me")
       .then(setProfile)
-      .catch(() => {});
-  }, []);
+      .catch((requestError) => {
+        setError(
+          apiErrorMessage(requestError, "Unable to load your MR profile.")
+        );
+      });
+  }, [loadRetryCount]);
 
+  if (!profile && error) {
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          setLoadRetryCount((count) => count + 1);
+        }}
+      />
+    );
+  }
   if (!profile) return <Loader />;
 
   async function onSubmit(event) {
@@ -997,14 +1029,33 @@ function PharmaProfileForm() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [loadRetryCount, setLoadRetryCount] = useState(0);
 
   useEffect(() => {
     http
       .get("/profiles/pharma/me")
       .then(setProfile)
-      .catch(() => {});
-  }, []);
+      .catch((requestError) => {
+        setError(
+          apiErrorMessage(
+            requestError,
+            "Unable to load your company profile."
+          )
+        );
+      });
+  }, [loadRetryCount]);
 
+  if (!profile && error) {
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          setLoadRetryCount((count) => count + 1);
+        }}
+      />
+    );
+  }
   if (!profile) return <Loader />;
 
   async function onSubmit(event) {
@@ -1139,6 +1190,7 @@ function PharmacyProfileForm() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [loadRetryCount, setLoadRetryCount] = useState(0);
 
   useEffect(() => {
     http
@@ -1147,9 +1199,27 @@ function PharmacyProfileForm() {
         setProfile(data);
         setOriginalProfile(data);
       })
-      .catch(() => {});
-  }, []);
+      .catch((requestError) => {
+        setError(
+          apiErrorMessage(
+            requestError,
+            "Unable to load your pharmacy profile."
+          )
+        );
+      });
+  }, [loadRetryCount]);
 
+  if (!profile && error) {
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          setLoadRetryCount((count) => count + 1);
+        }}
+      />
+    );
+  }
   if (!profile) return <Loader />;
 
   function update(field, value) {
@@ -1216,27 +1286,20 @@ function PharmacyProfileForm() {
     (profile.businessVerified ? "VERIFIED" : "NOT VERIFIED");
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 pb-12">
+    <div className="mx-auto w-full max-w-6xl space-y-7 pb-12">
       {/* HEADER */}
       <section
-        className="relative overflow-hidden rounded-[28px] p-6 sm:p-8"
+        className="rounded-[22px] border bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.035)] sm:p-8"
         style={{
-          background: `linear-gradient(135deg, ${COLORS.navy}, ${COLORS.purple})`,
+          borderColor: COLORS.border,
         }}
       >
-        <div
-          className="absolute -right-20 -top-24 h-64 w-64 rounded-full opacity-20 blur-3xl"
-          style={{ backgroundColor: COLORS.primary }}
-        />
-
-        <div
-          className="absolute -bottom-20 left-1/3 h-48 w-48 rounded-full opacity-10 blur-3xl"
-          style={{ backgroundColor: COLORS.coral }}
-        />
-
-        <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-5">
-            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10">
+            <div
+              className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl"
+              style={{ backgroundColor: "#F8F2F5", color: COLORS.primary }}
+            >
               {profile.profileImage ||
               profile.logo ? (
                 <img
@@ -1249,25 +1312,22 @@ function PharmacyProfileForm() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <Store
-                  size={25}
-                  className="text-white/70"
-                />
+                <Store size={25} />
               )}
             </div>
 
             <div>
-              <p className="font-[Unica_One] text-[9px] uppercase tracking-[0.2em] text-white/45">
+              <p className="font-[Unica_One] text-[9px] uppercase tracking-[0.2em]" style={{ color: COLORS.primary }}>
                 Pharmacy Profile
               </p>
 
-              <h1 className="mt-1 font-[Cinzel] text-2xl font-semibold text-white">
+              <h1 className="mt-1 font-[Cinzel] text-xl font-semibold leading-snug sm:text-2xl" style={{ color: COLORS.navy }}>
                 {profile.displayName ||
                   profile.pharmacyName ||
                   "My Pharmacy"}
               </h1>
 
-              <p className="mt-1 font-[Fauna_One] text-xs text-white/55">
+              <p className="mt-1 font-[Fauna_One] text-xs" style={{ color: COLORS.muted }}>
                 {profile.pharmacyType ||
                   "Pharmacy"}
                 {profile.city
@@ -1281,13 +1341,12 @@ function PharmacyProfileForm() {
 
           <div className="flex items-center gap-3">
             {verified && (
-              <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-2">
+              <div className="flex items-center gap-2 rounded-full px-3 py-2" style={{ backgroundColor: "#EDF6F0", color: "#32734D" }}>
                 <ShieldCheck
                   size={14}
-                  className="text-white/75"
                 />
 
-                <span className="font-[Unica_One] text-[9px] uppercase tracking-[0.1em] text-white/65">
+                <span className="font-[Unica_One] text-[9px] uppercase tracking-[0.1em]">
                   Verified
                 </span>
               </div>
@@ -1300,7 +1359,7 @@ function PharmacyProfileForm() {
                   setEditing(true);
                   setSaved(false);
                 }}
-                className="flex items-center gap-2 rounded-xl bg-[#D83F87] px-4 py-2.5 font-[Unica_One] text-[10px] uppercase tracking-[0.08em] text-white transition hover:bg-[#c93679]"
+                className="flex items-center gap-2 rounded-full bg-[#D83F87] px-5 py-3 font-[Unica_One] text-[9px] uppercase tracking-[0.1em] text-white transition hover:bg-[#c93679]"
               >
                 <Pencil size={14} />
                 Edit Profile
@@ -1337,9 +1396,9 @@ function PharmacyProfileForm() {
         </div>
       )}
 
-      <form onSubmit={onSubmit} className="space-y-6">
+      <form onSubmit={onSubmit} className="space-y-7">
         {/* BASIC INFORMATION */}
-        <Card className="border-[#E9E6EC] bg-white p-6 sm:p-8">
+        <Card className="rounded-[20px] border-[#E9E6EC] bg-white p-6 shadow-[0_8px_28px_rgba(42,27,61,0.035)] sm:p-8">
           <SectionHeader
             icon={Building2}
             eyebrow="Identity"
@@ -1526,7 +1585,7 @@ function PharmacyProfileForm() {
         </Card>
 
         {/* LOCATION */}
-        <Card className="border-[#E9E6EC] bg-white p-6 sm:p-8">
+        <Card className="rounded-[20px] border-[#E9E6EC] bg-white p-6 shadow-[0_8px_28px_rgba(42,27,61,0.035)] sm:p-8">
           <SectionHeader
             icon={MapPin}
             eyebrow="Location"
@@ -1635,7 +1694,7 @@ function PharmacyProfileForm() {
         </Card>
 
         {/* LEGAL */}
-        <Card className="border-[#E9E6EC] bg-white p-6 sm:p-8">
+        <Card className="rounded-[20px] border-[#E9E6EC] bg-white p-6 shadow-[0_8px_28px_rgba(42,27,61,0.035)] sm:p-8">
           <SectionHeader
             icon={ShieldCheck}
             eyebrow="Compliance"
@@ -1926,7 +1985,7 @@ function PharmacyProfileForm() {
         </Card>
 
         {/* PROCUREMENT */}
-        <Card className="border-[#E9E6EC] bg-white p-6 sm:p-8">
+        <Card className="rounded-[20px] border-[#E9E6EC] bg-white p-6 shadow-[0_8px_28px_rgba(42,27,61,0.035)] sm:p-8">
           <SectionHeader
             icon={PackageSearch}
             eyebrow="Procurement"
@@ -2104,7 +2163,7 @@ function PharmacyProfileForm() {
         </Card>
 
         {/* COMMUNICATION */}
-        <Card className="border-[#E9E6EC] bg-white p-6 sm:p-8">
+        <Card className="rounded-[20px] border-[#E9E6EC] bg-white p-6 shadow-[0_8px_28px_rgba(42,27,61,0.035)] sm:p-8">
           <SectionHeader
             icon={MessageSquare}
             eyebrow="Communication"
@@ -2202,7 +2261,7 @@ function PharmacyProfileForm() {
         </Card>
 
         {/* PRIVACY */}
-        <Card className="border-[#E9E6EC] bg-white p-6 sm:p-8">
+        <Card className="rounded-[20px] border-[#E9E6EC] bg-white p-6 shadow-[0_8px_28px_rgba(42,27,61,0.035)] sm:p-8">
           <SectionHeader
             icon={Globe2}
             eyebrow="Privacy"
@@ -2307,14 +2366,33 @@ function StockistProfileForm() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [loadRetryCount, setLoadRetryCount] = useState(0);
 
   useEffect(() => {
     http
       .get("/profiles/stockist/me")
       .then(setProfile)
-      .catch(() => {});
-  }, []);
+      .catch((requestError) => {
+        setError(
+          apiErrorMessage(
+            requestError,
+            "Unable to load your distributor profile."
+          )
+        );
+      });
+  }, [loadRetryCount]);
 
+  if (!profile && error) {
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError(null);
+          setLoadRetryCount((count) => count + 1);
+        }}
+      />
+    );
+  }
   if (!profile) return <Loader />;
 
   async function onSubmit(event) {

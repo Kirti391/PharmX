@@ -13,9 +13,9 @@
   --color-navy: #2A1B3D;
   --color-purple: #44318D;
   --color-coral: #E98074;
-  --color-muted: #A4B3B6;
-  --color-background: #F8F7F9;
-  --color-border: #E9E6EC;
+  --color-muted: #8C8496;
+  --color-background: #FCFAF8;
+  --color-border: #E9E2EA;
 
   /* Supporting legacy aliases */
   --color-tealdeep: #44318D;
@@ -41,21 +41,29 @@
 }
 
 html {
-  background-color: #F8F7F9;
+  min-width: 320px;
+  background-color: #FCFAF8;
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: clip;
 
   font-family: "Fauna One", serif;
 
-  background-color: #F8F7F9;
+  background-color: #FCFAF8;
   color: #2A1B3D;
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  overflow-x: clip;
 }
 
 /* =========================================================
@@ -96,7 +104,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #F8F7F9;
+  background: #FCFAF8;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -383,5 +391,193 @@ body {
   .pharmunis-notification-pulse,
   .pharmunis-shimmer {
     animation: none !important;
+  }
+}
+
+/* =========================================================
+   ADMIN WORKSPACE
+   ========================================================= */
+
+.admin-shell {
+  min-height: 100vh;
+  background: #11131d;
+  color: #f4f0f8;
+}
+
+.admin-shell aside {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #171925;
+}
+
+.admin-shell aside nav a {
+  color: #c4bfd0;
+}
+
+.admin-shell aside nav a:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.admin-shell aside a.admin-user-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-shell aside nav a[class*="bg-[#FBEAF2]"] {
+  background: rgba(216, 63, 135, 0.16);
+  color: #f081b5;
+}
+
+.admin-shell aside [class*="text-[#2A1B3D]"] {
+  color: #f4f0f8 !important;
+}
+
+.admin-shell aside [class*="text-[#A4B3B6]"] {
+  color: #a7a1b6 !important;
+}
+
+.admin-shell aside button[class*="bg-[#FCFAF8]"] {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: #222433;
+  color: #b8b2c6;
+}
+
+.admin-shell aside nav a span[class*="bg-[#D83F87]"] {
+  background: #e980b2;
+}
+
+.admin-shell > div > header {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(23, 25, 37, 0.96);
+}
+
+.admin-shell > div > header button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(68, 49, 141, 0.65);
+  color: #f4f0f8;
+}
+
+.admin-shell > div > header button:hover {
+  background: rgba(216, 63, 135, 0.3);
+  color: #ffffff;
+}
+
+.admin-main {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(68, 49, 141, 0.16), transparent 38rem),
+    #11131d;
+}
+
+.admin-page {
+  color: #f4f0f8;
+}
+
+.admin-page > header {
+  background: linear-gradient(118deg, #2a1b3d 0%, #44318d 100%) !important;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24) !important;
+}
+
+.admin-page div[class*="rounded-[20px]"] {
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  background-color: #191b28 !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16) !important;
+}
+
+.admin-page [class*="text-[#2A1B3D]"],
+.admin-page [class*="text-navy"] {
+  color: #f4f0f8 !important;
+}
+
+.admin-page [class*="text-[#6E6658]"],
+.admin-page [class*="text-[#514A58]"] {
+  color: #c4bfd0 !important;
+}
+
+.admin-page [class*="text-[#8C8496]"],
+.admin-page [class*="text-[#A4B3B6]"] {
+  color: #a7a1b6 !important;
+}
+
+.admin-page [class*="border-[#E8E3E6]"],
+.admin-page [class*="border-[#EEE9EE]"],
+.admin-page [class*="border-[#E9E2EA]"],
+.admin-page [class*="border-[#F0EDF1]"] {
+  border-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+.admin-page [class*="divide-[#F0EDF1]"] > :not(:last-child),
+.admin-page [class*="divide-[#EEE9EE]"] > :not(:last-child) {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.admin-page [class*="bg-[#FCFAF8]"],
+.admin-page [class*="bg-[#FCFAFD]"] {
+  background-color: #141722 !important;
+}
+
+.admin-page [class*="bg-[#EFEBF9]"] {
+  background-color: rgba(110, 88, 190, 0.2) !important;
+}
+
+.admin-page [class*="bg-[#FCEAF2]"] {
+  background-color: rgba(216, 63, 135, 0.16) !important;
+}
+
+.admin-page [class*="bg-[#FBEAE6]"] {
+  background-color: rgba(233, 128, 116, 0.15) !important;
+}
+
+.admin-page [class*="bg-[#EEF2F2]"] {
+  background-color: rgba(164, 179, 182, 0.14) !important;
+}
+
+.admin-page [class*="bg-[#F0EDF1]"],
+.admin-page [class*="bg-[#F7F5FA]"],
+.admin-page [class*="bg-[#F8F2F5]"] {
+  background-color: #242633 !important;
+}
+
+.admin-page [class*="hover:bg-[#FCFAFD]"]:hover {
+  background-color: rgba(255, 255, 255, 0.035) !important;
+}
+
+.admin-page input,
+.admin-page select,
+.admin-page textarea {
+  border-color: rgba(255, 255, 255, 0.14);
+  background-color: #141722;
+  color: #f4f0f8;
+}
+
+.admin-page input::placeholder {
+  color: #8e899e;
+}
+
+.admin-page input:focus,
+.admin-page select:focus,
+.admin-page textarea:focus {
+  border-color: #d83f87;
+}
+
+.admin-page [role="alert"] {
+  border-color: rgba(248, 113, 113, 0.3);
+  background-color: rgba(127, 29, 29, 0.22);
+  color: #fecaca;
+}
+
+.admin-page pre {
+  color: #ded9e8 !important;
+}
+
+.admin-dashboard > section[aria-label="Platform metrics"] {
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(25, 27, 40, 0.62);
+}
+
+@media (max-width: 767px) {
+  .admin-page > header {
+    border-radius: 20px;
   }
 }

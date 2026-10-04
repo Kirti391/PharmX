@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Bell, Plus } from "lucide-react";
 
 import { SURFACE } from "./dashboardTheme";
-import { Eyebrow, ScriptLine } from "./DashboardPrimitives";
+import { Eyebrow } from "./DashboardPrimitives";
 
 /* =========================================================
    PHARMUNIS — DASHBOARD HERO
@@ -15,69 +15,69 @@ export function DashboardHero({
   hasUnread = false,
 }) {
   return (
-    <header className="flex flex-col gap-7 lg:flex-row lg:items-start lg:justify-between">
-      <div className="min-w-0">
-        <Eyebrow color={SURFACE.inkMuted}>Pharmacy workspace</Eyebrow>
-
-        <h1
-          className="
-            mt-3 font-editorial font-semibold uppercase
-            text-[30px] leading-[1.06] tracking-[-0.01em]
-            sm:text-[38px] lg:text-[44px]
-          "
-          style={{ color: SURFACE.ink }}
-        >
-          Hello, {pharmacyName}
-        </h1>
-
-        <ScriptLine
-          className="mt-4 text-[17px] sm:text-[18px]"
-          color={SURFACE.inkSoft}
-        >
-          {summary}
-        </ScriptLine>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-3">
-        <Link
-          to="/notifications"
-          aria-label="Notifications"
-          className="
-            relative flex h-11 w-11 items-center justify-center rounded-full
-            border bg-white transition-all duration-200
-            hover:-translate-y-[1px]
-          "
-          style={{ borderColor: SURFACE.hairline, color: SURFACE.ink }}
-        >
-          <Bell size={17} strokeWidth={1.6} />
-
-          {hasUnread && (
-            <span
-              className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full"
-              style={{ backgroundColor: SURFACE.coral }}
-            />
-          )}
-        </Link>
-
-        <Link
-          to="/requirements/create"
-          className="
-            group flex h-11 items-center gap-2.5 rounded-full px-5
-            text-white transition-all duration-200
-            hover:-translate-y-[1px] hover:shadow-[0_12px_26px_rgba(216,63,135,0.28)]
-          "
-          style={{ backgroundColor: SURFACE.pink }}
-        >
-          <Plus
-            size={16}
-            strokeWidth={2}
-            className="transition-transform duration-200 group-hover:rotate-90"
-          />
-
-          <span className="font-script text-[17px] leading-none">
-            New requirement
+    <header
+      className="relative overflow-hidden rounded-[18px] border border-t-[3px] px-5 py-6 shadow-[0_6px_22px_rgba(42,27,61,0.04)] sm:px-8 sm:py-8 lg:px-9"
+      style={{
+        borderColor: SURFACE.hairline,
+        borderTopColor: SURFACE.purple,
+        backgroundColor: SURFACE.paper,
+      }}
+    >
+      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <span
+            className="inline-flex rounded-md border bg-white px-3 py-2"
+            style={{ borderColor: SURFACE.hairline }}
+          >
+            <Eyebrow color={SURFACE.pink}>Pharmacy workspace</Eyebrow>
           </span>
-        </Link>
+
+          <h1
+            className="mt-4 max-w-3xl break-words font-editorial text-[30px] font-medium leading-[1.08] tracking-[-0.025em] sm:text-[38px] lg:text-[46px]"
+            style={{ color: SURFACE.ink }}
+          >
+            Hello, {pharmacyName}
+          </h1>
+
+          <p
+            className="mt-4 max-w-2xl font-body text-[13px] leading-6 sm:text-[14px]"
+            style={{ color: SURFACE.inkSoft }}
+          >
+            {summary}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-3">
+          <Link
+            to="/notifications"
+            aria-label="Notifications"
+            className="relative flex h-11 w-11 items-center justify-center rounded-xl border bg-white transition-all duration-200 hover:border-[#44318D]/30 hover:bg-[#F7F5FA]"
+            style={{ borderColor: SURFACE.hairline, color: SURFACE.ink }}
+          >
+            <Bell size={17} strokeWidth={1.6} />
+
+            {hasUnread && (
+              <span
+                className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full"
+                style={{ backgroundColor: SURFACE.coral }}
+              />
+            )}
+          </Link>
+
+          <Link
+            to="/requirements/create"
+            className="group flex h-11 items-center gap-2.5 rounded-lg px-5 font-nav text-[9px] uppercase tracking-[0.12em] text-white transition-colors duration-200 hover:brightness-105"
+            style={{ backgroundColor: SURFACE.pink }}
+          >
+            <Plus
+              size={16}
+              strokeWidth={2}
+              className="transition-transform duration-200 group-hover:rotate-90"
+            />
+
+            <span>New requirement</span>
+          </Link>
+        </div>
       </div>
     </header>
   );

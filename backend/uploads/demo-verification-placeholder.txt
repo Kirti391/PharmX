@@ -1,0 +1,5 @@
+PHARMX DEMO DATA — NOT A REAL DOCUMENT
+
+This synthetic placeholder exists only to demonstrate the development verification
+review interface. It is not a business registration, drug licence, medical
+registration, or proof of identity. Do not use it for real verification.

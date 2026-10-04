@@ -1,50 +1,27 @@
 import { Link } from "react-router-dom";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Clock3 } from "lucide-react";
 
-import { SURFACE } from "./dashboardTheme";
-import { statusLabel, urgencyLabel } from "./dashboardTheme";
+import {
+  SURFACE,
+  statusColor,
+  statusLabel,
+  urgencyLabel,
+} from "./dashboardTheme";
 import { formatStamp, safeDate } from "./dashboardData";
 import { isToday } from "date-fns";
 
-/* =========================================================
-   PHARMUNIS — FEATURED REQUIREMENT CARD
-   Numbered, editorial card used for the three most recent
-   procurement requirements.
-========================================================= */
-
 const VARIANTS = {
   dark: {
-    background: "#241B3F",
-    hoverBackground: "#2E2350",
-    title: "#FFFFFF",
-    script: "rgba(255,255,255,0.74)",
-    label: "rgba(255,255,255,0.52)",
-    number: "#FFFFFF",
-    arrowBorder: "rgba(255,255,255,0.24)",
-    arrowColor: "#FFFFFF",
-    edge: "transparent",
+    accent: SURFACE.pink,
+    numberBackground: SURFACE.pinkSoft,
   },
   lavender: {
-    background: SURFACE.lavender,
-    hoverBackground: "#E4E0F4",
-    title: SURFACE.ink,
-    script: SURFACE.inkSoft,
-    label: SURFACE.inkMuted,
-    number: SURFACE.ink,
-    arrowBorder: "rgba(42,27,61,0.14)",
-    arrowColor: SURFACE.ink,
-    edge: SURFACE.ink,
+    accent: SURFACE.purple,
+    numberBackground: SURFACE.purpleSoft,
   },
   peach: {
-    background: SURFACE.peach,
-    hoverBackground: "#F8D8CF",
-    title: SURFACE.ink,
-    script: SURFACE.inkSoft,
-    label: SURFACE.inkMuted,
-    number: SURFACE.ink,
-    arrowBorder: "rgba(233,128,116,0.35)",
-    arrowColor: SURFACE.ink,
-    edge: SURFACE.coral,
+    accent: SURFACE.coral,
+    numberBackground: SURFACE.coralSoft,
   },
 };
 
@@ -73,100 +50,98 @@ export function RequirementFeatureCard({
 
   const status = statusLabel(requirement?.status);
 
-  const meta = [
-    urgencyLabel(requirement?.urgency),
-    status,
-    postedLabel(requirement?.createdAt),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const meta = postedLabel(requirement?.createdAt);
 
   return (
     <Link
       to={`/requirements/${requirement?.id}`}
       className="
-        group relative block overflow-hidden rounded-[14px]
-        transition-all duration-300 hover:-translate-y-[3px]
-        hover:shadow-[0_18px_38px_rgba(42,27,61,0.14)]
+        group relative block overflow-hidden rounded-[15px] border
+        transition-all duration-200 hover:-translate-y-0.5
+        hover:shadow-[0_12px_26px_rgba(42,27,61,0.08)]
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D83F87]
       "
-      style={{ backgroundColor: palette.background }}
-      onMouseEnter={(event) => {
-        event.currentTarget.style.backgroundColor =
-          palette.hoverBackground;
-      }}
-      onMouseLeave={(event) => {
-        event.currentTarget.style.backgroundColor =
-          palette.background;
-      }}
+      style={{ borderColor: SURFACE.hairline, backgroundColor: SURFACE.paper }}
     >
-      {palette.edge !== "transparent" && (
-        <span
-          className="absolute inset-y-0 left-0 w-[4px]"
-          style={{ backgroundColor: palette.edge }}
-        />
-      )}
+      <span
+        className="absolute inset-y-0 left-0 w-1"
+        style={{ backgroundColor: palette.accent }}
+      />
 
       <div
         className="
-          flex flex-col gap-4 px-6 py-6
-          sm:grid sm:grid-cols-[86px_minmax(0,1fr)_44px] sm:items-center
-          sm:gap-6 sm:py-7
+          flex items-start gap-3.5 px-4 py-4 pl-5
+          sm:grid sm:grid-cols-[54px_minmax(0,1fr)_40px] sm:items-center
+          sm:gap-4 sm:px-5 sm:py-[18px]
         "
       >
-        {/* Ordinal */}
-
-        <div className="flex items-end gap-2 sm:block">
+        <div
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+          style={{ backgroundColor: palette.numberBackground }}
+        >
           <p
-            className="font-editorial text-[26px] font-semibold leading-none"
-            style={{ color: palette.number }}
+            className="font-editorial text-[17px] font-semibold leading-none"
+            style={{ color: palette.accent }}
           >
             {ordinal}
           </p>
-
-          <p
-            className="workspace-label sm:mt-2"
-            style={{ color: palette.label }}
-          >
-            Requirement {ordinal}
-          </p>
         </div>
 
-        {/* Content */}
-
-        <div className="min-w-0 text-left sm:text-center">
-          <h3
-            className="font-editorial text-[17px] font-semibold leading-snug sm:text-[19px]"
-            style={{ color: palette.title }}
-          >
-            {requirement?.title || "Untitled requirement"}
-          </h3>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3
+              className="min-w-0 font-editorial text-[15px] font-semibold leading-snug transition-colors group-hover:text-[#D83F87] sm:text-[16px]"
+              style={{ color: SURFACE.ink }}
+            >
+              {requirement?.title || "Untitled requirement"}
+            </h3>
+            <span
+              className="rounded-full px-2.5 py-1 font-nav text-[8px] uppercase tracking-[0.1em]"
+              style={{
+                backgroundColor: `${statusColor(requirement?.status)}14`,
+                color: statusColor(requirement?.status),
+              }}
+            >
+              {status}
+            </span>
+            {requirement?.urgency && (
+              <span
+                className="rounded-full px-2.5 py-1 font-nav text-[8px] uppercase tracking-[0.1em]"
+                style={{
+                  backgroundColor: SURFACE.navySoft,
+                  color: SURFACE.inkSoft,
+                }}
+              >
+                {urgencyLabel(requirement?.urgency)}
+              </span>
+            )}
+          </div>
 
           <p
-            className="mt-2 truncate font-script text-[16px] leading-7 sm:mx-auto sm:max-w-[560px]"
-            style={{ color: palette.script }}
+            className="mt-1.5 line-clamp-2 font-body text-[11px] leading-5 sm:text-xs"
+            style={{ color: SURFACE.inkSoft }}
           >
             {requirement?.description || "No description added yet."}
           </p>
 
           <p
-            className="workspace-label mt-3"
-            style={{ color: palette.label }}
+            className="mt-2 flex items-center gap-1.5 font-nav text-[9px] uppercase tracking-[0.08em]"
+            style={{ color: SURFACE.inkMuted }}
           >
+            <Clock3 size={12} strokeWidth={1.7} />
             {meta}
           </p>
         </div>
 
-        {/* Arrow */}
-
         <span
           className="
-            hidden h-11 w-11 shrink-0 items-center justify-center rounded-full
-            border transition-transform duration-300 group-hover:translate-x-1
-            group-hover:-translate-y-1 sm:flex
+            hidden h-9 w-9 shrink-0 items-center justify-center rounded-full
+            border transition-all duration-200 group-hover:translate-x-0.5
+            group-hover:-translate-y-0.5 sm:flex
           "
           style={{
-            borderColor: palette.arrowBorder,
-            color: palette.arrowColor,
+            borderColor: SURFACE.hairline,
+            color: palette.accent,
           }}
         >
           <ArrowUpRight size={17} strokeWidth={1.7} />

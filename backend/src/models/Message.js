@@ -7,6 +7,8 @@ const messageSchema = new mongoose.Schema(
     body: { type: String, required: true },
     attachmentUrl: { type: String, default: null },
     readAt: { type: Date, default: null },
+    editedAt: { type: Date, default: null },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

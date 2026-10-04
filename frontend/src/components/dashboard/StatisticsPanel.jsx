@@ -11,21 +11,25 @@ const TILES = [
     key: "requirements",
     label: "Requirements",
     color: SURFACE.pink,
+    background: SURFACE.pinkSoft,
   },
   {
     key: "connections",
     label: "Connections",
     color: SURFACE.purple,
+    background: SURFACE.purpleSoft,
   },
   {
     key: "appointments",
     label: "Appointments",
     color: SURFACE.coral,
+    background: SURFACE.coralSoft,
   },
   {
     key: "notifications",
     label: "Notifications",
-    color: SURFACE.ink,
+    color: SURFACE.inkSoft,
+    background: SURFACE.sectionCanvas,
   },
 ];
 
@@ -46,7 +50,10 @@ export function StatisticsPanel({ stats = {} }) {
   };
 
   return (
-    <section className="min-w-0">
+    <section
+      className="min-w-0 rounded-[18px] border bg-white p-5 shadow-[0_6px_22px_rgba(42,27,61,0.035)] sm:p-6"
+      style={{ borderColor: SURFACE.hairline }}
+    >
       <PanelHeading
         eyebrow="Overview"
         eyebrowColor={SURFACE.purple}
@@ -54,29 +61,29 @@ export function StatisticsPanel({ stats = {} }) {
       />
 
       <div
-        className="mt-5 grid grid-cols-2 border-t border-l"
+        className="mt-5 grid grid-cols-2 gap-2.5"
         style={{ borderColor: SURFACE.hairline }}
       >
         {TILES.map((tile) => (
           <div
             key={tile.key}
-            className="group relative border-b border-r px-4 py-5 transition-colors duration-200 hover:bg-[#FBFAFC] sm:px-5 sm:py-6"
+            className="group relative min-h-[112px] overflow-hidden rounded-[14px] border p-4 transition-colors duration-200 hover:bg-[#FCFAF8] sm:p-5"
             style={{ borderColor: SURFACE.hairline }}
           >
             <span
-              className="block h-[3px] w-7 rounded-full transition-all duration-300 group-hover:w-12"
-              style={{ backgroundColor: tile.color }}
+              className="absolute -right-4 -top-5 h-16 w-16 rounded-full transition-transform duration-300 group-hover:scale-110"
+              style={{ backgroundColor: tile.background }}
             />
 
             <p
-              className="mt-4 font-editorial text-[28px] font-semibold leading-none sm:text-[32px]"
+              className="relative mt-1 font-editorial text-[28px] font-semibold leading-none sm:text-[32px]"
               style={{ color: SURFACE.ink }}
             >
               {formatCount(values[tile.key])}
             </p>
 
             <p
-              className="workspace-label mt-2.5"
+              className="relative mt-2 font-nav text-[9px] uppercase tracking-[0.1em]"
               style={{ color: SURFACE.inkMuted }}
             >
               {tile.label}

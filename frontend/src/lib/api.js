@@ -33,6 +33,7 @@ async function refreshAccessToken() {
 
   if (!refreshToken) {
     console.warn("[AUTH] No refresh token available.");
+    clear();
     return null;
   }
 
@@ -89,13 +90,6 @@ api.interceptors.response.use(
 
     const status = error?.response?.status;
 
-    console.error("[API ERROR]", {
-      method: original?.method?.toUpperCase(),
-      url: original?.url,
-      status,
-      response: error?.response?.data,
-    });
-
     //
     // Only refresh on 401.
     //
@@ -122,6 +116,13 @@ api.interceptors.response.use(
         return api(original);
       }
     }
+
+    console.error("[API ERROR]", {
+      method: original?.method?.toUpperCase(),
+      url: original?.url,
+      status,
+      response: error?.response?.data,
+    });
 
     //
     // IMPORTANT:

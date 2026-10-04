@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 
 import { http, apiErrorMessage } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
@@ -13,6 +14,7 @@ export default function LoginPage({ adminPortal = false }) {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -22,10 +24,13 @@ export default function LoginPage({ adminPortal = false }) {
     setLoading(true);
 
     try {
-      const result = await http.post("/auth/login", {
+      const result = await http.post(
+        adminPortal ? "/auth/admin/login" : "/auth/login",
+        {
         email,
         password,
-      });
+        }
+      );
 
       if (adminPortal && result.user.role !== "ADMIN") {
         await http.post("/auth/logout", {
@@ -129,17 +134,27 @@ export default function LoginPage({ adminPortal = false }) {
   Password
 </Label>
 
-<Input
-  id="login-password"
-  name="password"
-  type="password"
-  required
-  autoComplete="current-password"
-  value={password}
-  onChange={(e) => setPassword(e.target.value)}
-  placeholder="••••••••"
-  className="mt-2 h-12 rounded-xl border-[#A4B3B6]/50 bg-white text-[#2A1B3D] placeholder:text-[#A4B3B6] shadow-none focus:border-[#D83F87] focus:ring-1 focus:ring-[#D83F87]/20"
-/>
+<div className="relative mt-2">
+  <Input
+    id="login-password"
+    name="password"
+    type={showPassword ? "text" : "password"}
+    required
+    autoComplete="current-password"
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+    placeholder="••••••••"
+    className="h-12 rounded-xl border-[#A4B3B6]/50 bg-white pr-12 text-[#2A1B3D] placeholder:text-[#A4B3B6] shadow-none focus:border-[#D83F87] focus:ring-1 focus:ring-[#D83F87]/20"
+  />
+  <button
+    type="button"
+    onClick={() => setShowPassword((visible) => !visible)}
+    aria-label={showPassword ? "Hide password" : "Show password"}
+    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[#8C8496] transition hover:bg-[#F7F5FA] hover:text-[#44318D]"
+  >
+    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+  </button>
+</div>
 
           {/* Error */}
           {error && (
@@ -193,7 +208,14 @@ export default function LoginPage({ adminPortal = false }) {
           </p>
         </div>}
 
-        <div className="mt-5 text-center">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+          <Link
+            to="/forgot-password"
+            className="text-sm text-[#44318D] hover:text-[#D83F87]"
+            style={{ fontFamily: "Fauna One" }}
+          >
+            Forgot password?
+          </Link>
           {adminPortal ? (
             <Link
               to="/login"

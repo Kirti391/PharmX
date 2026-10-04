@@ -120,24 +120,24 @@ const Footer = () => {
 
             <ul className="space-y-4 font-[Fauna_One] text-sm text-white/60">
               <li>
-                <a href="#" className="transition hover:text-[#D83F87]">
+                <Link to="/discover/mrs" className="transition hover:text-[#D83F87]">
                   Find Professionals
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="transition hover:text-[#D83F87]">
+                <Link to="/opportunities" className="transition hover:text-[#D83F87]">
                   Find Opportunities
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="transition hover:text-[#D83F87]">
+                <Link to="/signup/pharma-company" className="transition hover:text-[#D83F87]">
                   For Organizations
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="transition hover:text-[#D83F87]">
+                <Link to="/signup" className="transition hover:text-[#D83F87]">
                   Join PharmUnis
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -153,15 +153,13 @@ const Footer = () => {
               developments across the pharmacy community.
             </p>
 
-            <a
-              href="#contact"
+            <Link
+              to="/signup"
               className="inline-flex items-center gap-2 rounded-full bg-[#D83F87] px-6 py-3 font-[Fauna_One] text-sm font-medium text-white transition hover:bg-[#E98074]"
             >
-            <Link to="/signup" >
             Get Started
-          </Link>
               <span>↗</span>
-            </a>
+            </Link>
           </div>
         </div>
 

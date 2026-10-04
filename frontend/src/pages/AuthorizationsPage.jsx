@@ -173,15 +173,15 @@ export default function AuthorizationsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 pb-10">
-      <header>
+    <main className="mx-auto max-w-5xl space-y-7 pb-10">
+      <header className="rounded-[22px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:p-7">
         <p className="workspace-label text-[#D83F87]">
           Trust and representation
         </p>
-        <h1 className="mt-2 font-display text-2xl font-semibold text-navy">
+        <h1 className="mt-2 font-display text-2xl font-semibold text-navy sm:text-3xl">
           {isMR ? "Company authorizations" : "MR authorizations"}
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-taupe">
+        <p className="mt-2 max-w-3xl text-xs leading-6 text-[#6E6658]">
           {isMR
             ? "Request company-scoped representation only after your authorization letter has been reviewed. Active authorizations are limited to the approved categories and territories."
             : "Review MR representation requests backed by an approved authorization document. Approving grants access only to the listed categories and territories."}

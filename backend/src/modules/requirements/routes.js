@@ -15,9 +15,14 @@ const {
 } = require("../../common/http");
 
 const Requirement = require("../../models/Requirement");
+const RequirementResponse = require("../../models/RequirementResponse");
+const PharmacyProfile = require("../../models/PharmacyProfile");
+const User = require("../../models/User");
 
 const {
   getPharmacyProfileByUserId,
+  getStockistProfileByUserId,
+  getDisplayProfile,
 } = require("../profiles/service");
 
 const {
@@ -110,6 +115,10 @@ const updateSchema = z.object({
   urgency: z
     .enum(["LOW", "NORMAL", "HIGH"])
     .optional(),
+});
+
+const responseSchema = z.object({
+  message: z.string().trim().min(5).max(2000),
 });
 
 /*
@@ -574,6 +583,234 @@ router.get(
         row,
         context
       )
+    );
+  })
+);
+
+/*
+|--------------------------------------------------------------------------
+| Requirement responses
+|--------------------------------------------------------------------------
+*/
+
+async function getAccessibleRequirement(id, user) {
+  const row = await Requirement.findById(id);
+  if (!row) {
+    throw new ApiError(404, "NOT_FOUND", "Requirement not found");
+  }
+
+  const context = await getCurrentUserContext(user);
+  const owner = isOwner(row, context);
+  const targetedUser =
+    normalizeRole(row.targetRole) === context.role;
+
+  if (!owner && !targetedUser) {
+    throw new ApiError(
+      403,
+      "FORBIDDEN",
+      "You are not allowed to access responses for this requirement"
+    );
+  }
+
+  return { row, context, owner, targetedUser };
+}
+
+async function serializeRequirementResponse(response) {
+  const responderUser = await User.findById(
+    response.responderUserId
+  ).select("role");
+  const responder = responderUser
+    ? await getDisplayProfile(
+        responderUser._id,
+        responderUser.role
+      )
+    : { name: "Business account", role: response.responderRole };
+
+  return {
+    id: response._id,
+    message: response.message,
+    status: response.status,
+    createdAt: response.createdAt,
+    responder: {
+      name: responder.name,
+      role: normalizeRole(responder.role || response.responderRole),
+      imageUrl: responder.imageUrl || null,
+    },
+  };
+}
+
+router.get(
+  "/:id/responses",
+  asyncHandler(async (req, res) => {
+    const { row, owner } = await getAccessibleRequirement(
+      req.params.id,
+      req.user
+    );
+    if (!owner) {
+      throw new ApiError(
+        403,
+        "FORBIDDEN",
+        "Only the requirement owner can review responses"
+      );
+    }
+
+    const responses = await RequirementResponse.find({
+      requirementId: row._id,
+      status: { $nin: ["WITHDRAWN", "REJECTED"] },
+    }).sort({ createdAt: -1 });
+
+    return ok(
+      res,
+      await Promise.all(responses.map(serializeRequirementResponse))
+    );
+  })
+);
+
+router.get(
+  "/:id/my-response",
+  requireRole("DISTRIBUTOR_STOCKIST"),
+  asyncHandler(async (req, res) => {
+    const { row, targetedUser } = await getAccessibleRequirement(
+      req.params.id,
+      req.user
+    );
+    if (!targetedUser) {
+      throw new ApiError(
+        403,
+        "FORBIDDEN",
+        "This requirement is not intended for distributors or stockists"
+      );
+    }
+
+    const response = await RequirementResponse.findOne({
+      requirementId: row._id,
+      responderUserId: req.user.sub,
+    });
+
+    return ok(
+      res,
+      response ? await serializeRequirementResponse(response) : null
+    );
+  })
+);
+
+router.post(
+  "/:id/responses",
+  requireRole("DISTRIBUTOR_STOCKIST"),
+  asyncHandler(async (req, res) => {
+    const parsed = responseSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(
+        res,
+        400,
+        "VALIDATION_ERROR",
+        parsed.error.issues[0]?.message || "Enter a response message"
+      );
+    }
+
+    const { row, context, owner, targetedUser } =
+      await getAccessibleRequirement(req.params.id, req.user);
+    const isPharmacyRequirement =
+      row.ownerRole === "PHARMACY" ||
+      (!row.ownerRole && row.pharmacyId);
+    if (owner || !targetedUser || !isPharmacyRequirement) {
+      throw new ApiError(
+        403,
+        "FORBIDDEN",
+        "Only pharmacy requirements intended for distributors or stockists can be answered"
+      );
+    }
+    if (row.status !== "OPEN") {
+      throw new ApiError(
+        409,
+        "REQUIREMENT_CLOSED",
+        "This requirement is no longer accepting responses"
+      );
+    }
+
+    const profile = await getStockistProfileByUserId(req.user.sub);
+    if (!profile.businessVerified) {
+      throw new ApiError(
+        403,
+        "DISTRIBUTOR_NOT_VERIFIED",
+        "Your distributor or stockist account must be verified before responding to pharmacy requirements"
+      );
+    }
+    if (
+      profile.licenceExpiryDate &&
+      new Date(profile.licenceExpiryDate) <= new Date()
+    ) {
+      throw new ApiError(
+        403,
+        "DISTRIBUTOR_LICENCE_EXPIRED",
+        "Your wholesale licence has expired. Renew and verify it before responding"
+      );
+    }
+
+    const existingResponse = await RequirementResponse.findOne({
+      requirementId: row._id,
+      responderUserId: req.user.sub,
+    });
+    if (existingResponse) {
+      throw new ApiError(
+        409,
+        "ALREADY_RESPONDED",
+        "You have already responded to this requirement"
+      );
+    }
+
+    let response;
+    try {
+      response = await RequirementResponse.create({
+        requirementId: row._id,
+        responderUserId: req.user.sub,
+        responderRole: context.role,
+        message: parsed.data.message,
+      });
+    } catch (createError) {
+      if (createError?.code === 11000) {
+        throw new ApiError(
+          409,
+          "ALREADY_RESPONDED",
+          "You have already responded to this requirement"
+        );
+      }
+      throw createError;
+    }
+
+    try {
+      const pharmacy = await PharmacyProfile.findById(
+        row.pharmacyId || row.ownerId
+      ).select("userId");
+      if (pharmacy?.userId) {
+        await createNotification({
+          userId: pharmacy.userId,
+          type: "SYSTEM",
+          title: "New supplier response",
+          body: `${profile.companyName} responded to your requirement: ${row.title}`,
+          data: {
+            requirementId: row._id,
+            responseId: response._id,
+          },
+        });
+      }
+    } catch (notificationError) {
+      console.error("Requirement response notification failed:", notificationError);
+    }
+
+    return created(
+      res,
+      {
+        id: response._id,
+        message: response.message,
+        status: response.status,
+        createdAt: response.createdAt,
+        responder: {
+          name: profile.companyName,
+          role: context.role,
+          imageUrl: null,
+        },
+      }
     );
   })
 );

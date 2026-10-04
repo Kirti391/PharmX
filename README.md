@@ -55,11 +55,28 @@ Open http://localhost:5173. Log in with any of the seeded demo accounts (passwor
 | Pharmacy (pending verification) | `pending.pharmacy@pharmx.dev` |
 | Stockist | `stockist1@pharmx.dev` |
 | Distributor | `distributor1@pharmx.dev` |
+| Doctor | `doctor1@pharmx.dev` |
 
 Or sign up fresh from the landing page — since there's no OTP step, the account is usable immediately.
 Doctors and distributor/stockist accounts can register through the role selector. Administrator access
 is available at `/admin/login`; admin accounts are provisioned by an existing administrator or the
 development seed and cannot be created through public signup.
+
+Run `npm run seed` again at any time to restore the demo accounts' shared password and add any
+missing sample records. The idempotent development fixtures include products, open requirements
+and opportunities, responses and applications, accepted/pending connections, appointments,
+messages, notifications, an MR lead/follow-up, and a pending verification review. Demo
+verification screens link to a clearly labeled placeholder file, not a real licence or identity
+document. The seed command refuses to run with `NODE_ENV=production`.
+
+For a larger test network, run `npm run seed:demo` from `backend/`. This additive seed creates
+five fictional accounts for each role, complete role profiles, pharmacy requirements, accepted
+connections, doctor appointment requests and confirmed appointments, and messaging conversations.
+It is idempotent and does not delete existing records. All demo accounts use
+`PharmXDemo!2026`; their emails follow `demo.<role>.<number>@pharmx.dev` (for example,
+`demo.doctor.01@pharmx.dev`). The seed only runs outside production and only against local
+MongoDB by default. Setting `PHARMX_ALLOW_REMOTE_DEMO_SEED=true` explicitly permits a dedicated
+remote non-production database.
 
 ---
 
@@ -81,8 +98,11 @@ development seed and cannot be created through public signup.
 - Company-managed, draft/publish product catalogues and discoverable C&F agent profiles; no
   ordering, inventory, payments, or prescription workflow
 - Consent-based professional appointment requests and communications for verified doctors
-- Real-time chat (Socket.IO) and real-time notification delivery
-- Admin console: user verification/reject/suspend, document review, audit log, analytics overview
+- Real-time chat (Socket.IO), with sender-only message editing and soft deletion visible to both
+  participants, plus real-time notification delivery
+- Admin console: separately throttled admin sign-in; platform overview; role/status user filters,
+  suspend/restore actions; document verification queue; company–MR authorization review; reports
+  and reasoned decisions; filtered audit trail; admin account activity; and in-app notifications
 - File uploads (profile images, verification documents) served locally
 
 **Deliberately simplified:**
@@ -90,6 +110,11 @@ development seed and cannot be created through public signup.
 - **File storage**: local disk (`backend/uploads/`) instead of S3/Cloudinary
 - **Categories**: a shared constant list rather than an admin-editable database table
 - **Matching engine**: transparent rule-based scoring, not a learned/AI model
+- **Admin security and operations**: admin sign-in is rate-limited and audited, but TOTP/SMS
+  two-factor authentication, CAPTCHA, trusted-device/session management, granular admin roles,
+  assignment/task workflows, privacy/deletion requests, licence automation, and system
+  configuration are not implemented. Admin activity is limited to operational review and must
+  not be used for commercial prospecting.
 
 ---
 

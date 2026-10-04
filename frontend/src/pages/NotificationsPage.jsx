@@ -9,9 +9,6 @@ import {
   MessageCircle,
   Network,
   RefreshCw,
-  UserRound,
-  Building2,
-  Store,
   AlertCircle,
   ShieldCheck,
 } from "lucide-react";
@@ -19,15 +16,16 @@ import {
 import { http, apiErrorMessage } from "../lib/api";
 import { Card, EmptyState, Loader, Button } from "../components/ui";
 import { useRealtimeEvent } from "../lib/socket";
+import { useAuthStore } from "../store/authStore";
 
 const COLORS = {
   primary: "#D83F87",
   navy: "#2A1B3D",
   purple: "#44318D",
   coral: "#E98074",
-  muted: "#A4B3B6",
-  background: "#F8F7F9",
-  border: "#E9E6EC",
+  muted: "#8C8496",
+  background: "#FCFAF8",
+  border: "#E9E2EA",
 };
 
 function normalizeNotificationType(notification) {
@@ -110,7 +108,20 @@ function getNotificationIcon(category) {
   return icons[category] || Bell;
 }
 
-function getNotificationIconStyle(category) {
+function getNotificationIconStyle(category, isAdmin) {
+  if (isAdmin) {
+    const styles = {
+      requirement: { backgroundColor: "rgba(216, 63, 135, 0.18)", color: "#f081b5" },
+      connection: { backgroundColor: "rgba(110, 88, 190, 0.22)", color: "#b9a9ff" },
+      message: { backgroundColor: "rgba(233, 128, 116, 0.18)", color: "#f1a197" },
+      appointment: { backgroundColor: "rgba(110, 88, 190, 0.22)", color: "#b9a9ff" },
+      verification: { backgroundColor: "rgba(216, 63, 135, 0.16)", color: "#f081b5" },
+      general: { backgroundColor: "rgba(164, 179, 182, 0.16)", color: "#c4bfd0" },
+    };
+
+    return styles[category] || styles.general;
+  }
+
   const styles = {
     requirement: {
       backgroundColor: `${COLORS.primary}12`,
@@ -163,9 +174,9 @@ function getRelatedLabel(notification) {
   );
 }
 
-function NotificationIcon({ category }) {
+function NotificationIcon({ category, isAdmin }) {
   const Icon = getNotificationIcon(category);
-  const iconStyle = getNotificationIconStyle(category);
+  const iconStyle = getNotificationIconStyle(category, isAdmin);
 
   return (
     <div
@@ -177,18 +188,26 @@ function NotificationIcon({ category }) {
   );
 }
 
-function NotificationCard({ notification, onRead }) {
+function NotificationCard({ notification, onRead, isAdmin }) {
   const category = getNotificationCategory(notification);
   const isRead = Boolean(notification?.readAt);
   const relatedLabel = getRelatedLabel(notification);
   const relativeTime = getRelativeTime(notification?.createdAt);
+  const mutedText = isAdmin ? "#a7a1b6" : COLORS.muted;
+  const bodyText = isAdmin ? "#c4bfd0" : "#4F4A41";
+  const primaryText = isAdmin ? "#f4f0f8" : COLORS.navy;
+  const categoryText = isAdmin ? "#b9a9ff" : COLORS.purple;
 
   return (
     <Card
       className="transition"
       style={{
-        borderColor: isRead ? COLORS.border : `${COLORS.primary}55`,
-        backgroundColor: isRead ? "#FFFFFF" : "#FFFCFE",
+        borderColor: isAdmin
+          ? isRead ? "rgba(255, 255, 255, 0.09)" : "rgba(216, 63, 135, 0.5)"
+          : isRead ? COLORS.border : `${COLORS.primary}55`,
+        backgroundColor: isAdmin
+          ? isRead ? "#191b28" : "#211b2b"
+          : isRead ? "#FFFFFF" : "#FFFCFE",
       }}
     >
       <button
@@ -197,7 +216,7 @@ function NotificationCard({ notification, onRead }) {
         onClick={() => !isRead && onRead(notification.id)}
       >
         <div className="flex items-start gap-3">
-          <NotificationIcon category={category} />
+          <NotificationIcon category={category} isAdmin={isAdmin} />
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -205,7 +224,7 @@ function NotificationCard({ notification, onRead }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <p
                     className="text-sm font-semibold"
-                    style={{ color: COLORS.navy }}
+                    style={{ color: primaryText }}
                   >
                     {notification?.title || "PharmUnis update"}
                   </p>
@@ -214,8 +233,10 @@ function NotificationCard({ notification, onRead }) {
                     <span
                       className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                       style={{
-                        backgroundColor: `${COLORS.primary}15`,
-                        color: COLORS.primary,
+                        backgroundColor: isAdmin
+                          ? "rgba(216, 63, 135, 0.18)"
+                          : `${COLORS.primary}15`,
+                        color: isAdmin ? "#f081b5" : COLORS.primary,
                       }}
                     >
                       New
@@ -225,7 +246,7 @@ function NotificationCard({ notification, onRead }) {
 
                 <span
                   className="mt-1 inline-block text-[11px] font-medium"
-                  style={{ color: COLORS.purple }}
+                  style={{ color: categoryText }}
                 >
                   {getCategoryLabel(category)}
                 </span>
@@ -234,7 +255,7 @@ function NotificationCard({ notification, onRead }) {
               {relativeTime && (
                 <span
                   className="flex shrink-0 items-center gap-1 text-xs"
-                  style={{ color: COLORS.muted }}
+                  style={{ color: mutedText }}
                 >
                   <Clock3 size={12} />
                   {relativeTime}
@@ -244,7 +265,7 @@ function NotificationCard({ notification, onRead }) {
 
             <p
               className="mt-2 text-sm leading-6"
-              style={{ color: "#4F4A41" }}
+              style={{ color: bodyText }}
             >
               {notification?.body || "You have a new update on PharmUnis."}
             </p>
@@ -253,9 +274,9 @@ function NotificationCard({ notification, onRead }) {
               <div
                 className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs"
                 style={{
-                  borderColor: COLORS.border,
-                  backgroundColor: COLORS.background,
-                  color: COLORS.navy,
+                  borderColor: isAdmin ? "rgba(255, 255, 255, 0.12)" : COLORS.border,
+                  backgroundColor: isAdmin ? "#141722" : COLORS.background,
+                  color: primaryText,
                 }}
               >
                 {category === "appointment" ? (
@@ -285,6 +306,7 @@ function NotificationCard({ notification, onRead }) {
 }
 
 export default function NotificationsPage() {
+  const isAdmin = useAuthStore((state) => state.user?.role === "ADMIN");
   const [items, setItems] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
   const [readingId, setReadingId] = useState(null);
@@ -417,15 +439,15 @@ export default function NotificationsPage() {
 
   if (!items) {
     return (
-      <div className="space-y-6">
+      <div className={`space-y-6 ${isAdmin ? "admin-notifications" : ""}`}>
         <div>
           <div
             className="h-8 w-48 animate-pulse rounded-lg"
-            style={{ backgroundColor: COLORS.border }}
+            style={{ backgroundColor: isAdmin ? "#292b3a" : COLORS.border }}
           />
           <div
             className="mt-2 h-4 w-80 max-w-full animate-pulse rounded"
-            style={{ backgroundColor: COLORS.border }}
+            style={{ backgroundColor: isAdmin ? "#292b3a" : COLORS.border }}
           />
         </div>
 
@@ -435,16 +457,23 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-7 ${isAdmin ? "admin-notifications" : ""}`}>
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div
+        className="flex flex-col gap-4 rounded-[22px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:flex-row sm:items-center sm:justify-between sm:p-7"
+        style={isAdmin ? {
+          borderColor: "rgba(255, 255, 255, 0.09)",
+          background: "linear-gradient(118deg, #2a1b3d 0%, #44318d 100%)",
+          boxShadow: "0 20px 48px rgba(0, 0, 0, 0.24)",
+        } : undefined}
+      >
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl"
               style={{
-                backgroundColor: `${COLORS.primary}12`,
-                color: COLORS.primary,
+                backgroundColor: isAdmin ? "rgba(216, 63, 135, 0.2)" : `${COLORS.primary}12`,
+                color: isAdmin ? "#f081b5" : COLORS.primary,
               }}
             >
               <Bell size={20} />
@@ -452,8 +481,8 @@ export default function NotificationsPage() {
 
             <div>
               <h1
-                className="font-display text-2xl font-bold"
-                style={{ color: COLORS.navy }}
+                className="font-display text-2xl font-semibold sm:text-3xl"
+                style={{ color: isAdmin ? "#ffffff" : COLORS.navy }}
               >
                 Notifications
               </h1>
@@ -461,7 +490,7 @@ export default function NotificationsPage() {
               {unreadCount > 0 && (
                 <p
                   className="mt-0.5 text-xs font-medium"
-                  style={{ color: COLORS.primary }}
+                  style={{ color: isAdmin ? "#f081b5" : COLORS.primary }}
                 >
                   {unreadCount} unread{" "}
                   {unreadCount === 1 ? "notification" : "notifications"}
@@ -471,8 +500,8 @@ export default function NotificationsPage() {
           </div>
 
           <p
-            className="mt-2 max-w-2xl text-sm leading-6"
-            style={{ color: "#6E6658" }}
+            className="mt-2 max-w-2xl text-xs leading-6"
+            style={{ color: isAdmin ? "#d0cbd9" : "#6E6658" }}
           >
             Stay updated on your requirements, supplier connections,
             messages, appointments, and account activity.
@@ -484,10 +513,10 @@ export default function NotificationsPage() {
             type="button"
             onClick={() => load({ silent: true })}
             disabled={refreshing}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border bg-white px-3.5 py-2 text-sm font-medium transition hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+            className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-xs font-medium transition hover:border-[#D83F87]/30 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60 ${isAdmin ? "bg-[#211b2b] hover:bg-[#2a1b3d]" : "bg-white"}`}
             style={{
-              borderColor: COLORS.border,
-              color: COLORS.navy,
+              borderColor: isAdmin ? "rgba(255, 255, 255, 0.18)" : COLORS.border,
+              color: isAdmin ? "#ffffff" : COLORS.navy,
             }}
           >
             <RefreshCw
@@ -503,6 +532,7 @@ export default function NotificationsPage() {
               size="sm"
               onClick={markAllRead}
               disabled={loadingAction}
+              className={isAdmin ? "!border-white/20 !text-white hover:!bg-white/10 hover:!text-white" : ""}
             >
               <CheckCheck size={15} className="mr-1.5" />
               Mark all read
@@ -542,15 +572,15 @@ export default function NotificationsPage() {
             return (
               <div
                 key={item.key}
-                className="rounded-2xl border bg-white p-4"
-                style={{ borderColor: COLORS.border }}
+                className={`rounded-2xl border p-4 ${isAdmin ? "bg-[#191b28]" : "bg-white"}`}
+                style={{ borderColor: isAdmin ? "rgba(255, 255, 255, 0.09)" : COLORS.border }}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div
                     className="flex h-8 w-8 items-center justify-center rounded-lg"
                     style={{
-                      backgroundColor: `${COLORS.purple}10`,
-                      color: COLORS.purple,
+                      backgroundColor: isAdmin ? "rgba(110, 88, 190, 0.22)" : `${COLORS.purple}10`,
+                      color: isAdmin ? "#b9a9ff" : COLORS.purple,
                     }}
                   >
                     <Icon size={15} />
@@ -558,7 +588,7 @@ export default function NotificationsPage() {
 
                   <span
                     className="font-display text-lg font-bold"
-                    style={{ color: COLORS.navy }}
+                    style={{ color: isAdmin ? "#f4f0f8" : COLORS.navy }}
                   >
                     {count}
                   </span>
@@ -566,7 +596,7 @@ export default function NotificationsPage() {
 
                 <p
                   className="mt-2 text-xs font-medium"
-                  style={{ color: "#6E6658" }}
+                  style={{ color: isAdmin ? "#c4bfd0" : "#6E6658" }}
                 >
                   {item.label}
                 </p>
@@ -581,9 +611,9 @@ export default function NotificationsPage() {
         <div
           className="flex items-start gap-2 rounded-xl border px-4 py-3 text-sm"
           style={{
-            borderColor: `${COLORS.coral}55`,
-            backgroundColor: `${COLORS.coral}10`,
-            color: "#7A3F38",
+            borderColor: isAdmin ? "rgba(233, 128, 116, 0.4)" : `${COLORS.coral}55`,
+            backgroundColor: isAdmin ? "rgba(127, 29, 29, 0.22)" : `${COLORS.coral}10`,
+            color: isAdmin ? "#fecaca" : "#7A3F38",
           }}
         >
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
@@ -593,11 +623,23 @@ export default function NotificationsPage() {
 
       {/* Notifications */}
       {items.length === 0 ? (
-        <Card>
-          <EmptyState
-            title="You're all caught up"
-            subtitle="Updates about requirements, connections, messages, appointments, and account activity will appear here."
-          />
+        <Card
+          style={isAdmin ? {
+            borderColor: "rgba(255, 255, 255, 0.09)",
+            backgroundColor: "#191b28",
+          } : undefined}
+        >
+          {isAdmin ? (
+            <div className="py-12 text-center text-[#c4bfd0]">
+              <p className="font-display font-medium text-[#f4f0f8]">You're all caught up</p>
+              <p className="mt-1 text-sm">Updates about requirements, connections, messages, appointments, and account activity will appear here.</p>
+            </div>
+          ) : (
+            <EmptyState
+              title="You're all caught up"
+              subtitle="Updates about requirements, connections, messages, appointments, and account activity will appear here."
+            />
+          )}
         </Card>
       ) : (
         <div className="space-y-3">
@@ -606,6 +648,7 @@ export default function NotificationsPage() {
               key={notification.id}
               notification={notification}
               onRead={markRead}
+              isAdmin={isAdmin}
             />
           ))}
         </div>

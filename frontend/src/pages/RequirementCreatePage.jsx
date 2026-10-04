@@ -212,9 +212,9 @@ export default function RequirementCreatePage() {
   }
 
   return (
-    <div className="min-h-full">
+    <div className="min-h-full space-y-7">
       {/* Header */}
-      <div className="mb-8">
+      <div className="rounded-[22px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:p-7">
         <Link
           to="/requirements"
           className="inline-flex items-center gap-2 text-sm font-medium text-[#44318D] transition-colors hover:text-[#D83F87]"
@@ -224,16 +224,16 @@ export default function RequirementCreatePage() {
         </Link>
 
         <div className="mt-5 flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#D83F87]/10 text-[#D83F87]">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#F8F2F5] text-primary">
             <FileText size={23} />
           </div>
 
           <div>
-            <h1 className="font-['Cinzel'] text-2xl font-semibold text-[#2A1B3D]">
+            <h1 className="font-['Cinzel'] text-2xl font-semibold text-[#2A1B3D] sm:text-3xl">
               Create Requirement
             </h1>
 
-            <p className="mt-1.5 max-w-2xl font-['Fauna_One'] text-sm leading-6 text-[#A4B3B6]">
+            <p className="mt-1.5 max-w-2xl font-['Fauna_One'] text-xs leading-6 text-[#6E6658]">
               Tell the PharmUnis network what your pharmacy needs.
               Select the supplier type you want to reach, and your
               requirement will be matched only with relevant profiles.
@@ -245,7 +245,7 @@ export default function RequirementCreatePage() {
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
           {/* Main form */}
-          <Card className="overflow-hidden border-[#E9E6EC] bg-white p-0 shadow-sm">
+          <Card className="overflow-hidden border-[#E9E2EA] bg-white p-0 shadow-[0_8px_28px_rgba(42,27,61,0.04)]">
             <div className="border-b border-[#E9E6EC] px-6 py-5">
               <div className="flex items-center gap-2">
                 <Sparkles
@@ -258,13 +258,13 @@ export default function RequirementCreatePage() {
                 </h2>
               </div>
 
-              <p className="mt-1 text-xs text-[#A4B3B6]">
+              <p className="mt-1 text-xs text-[#8C8496]">
                 Provide enough information for the selected supplier
                 type to understand what you need.
               </p>
             </div>
 
-            <div className="space-y-6 p-6">
+            <div className="space-y-6 p-5 sm:p-7">
               {/* Category */}
               <div>
                 <label
@@ -279,7 +279,7 @@ export default function RequirementCreatePage() {
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   disabled={loading}
-                  className="w-full rounded-xl border border-[#E9E6EC] bg-[#F8F7F9] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {PRODUCT_CATEGORIES?.map((item) => (
                     <option key={item} value={item}>
@@ -305,7 +305,7 @@ export default function RequirementCreatePage() {
                   onChange={(e) => setTitle(e.target.value)}
                   disabled={loading}
                   placeholder="e.g. Monthly requirement for cardiac medicines"
-                  className="w-full rounded-xl border border-[#E9E6EC] bg-[#F8F7F9] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition placeholder:text-[#A4B3B6] focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition placeholder:text-[#9A929F] focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
 
@@ -325,10 +325,10 @@ export default function RequirementCreatePage() {
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={loading}
                   placeholder="Describe the products, approximate quantity, preferred brands, delivery requirements, or any other useful information..."
-                  className="w-full resize-none rounded-xl border border-[#E9E6EC] bg-[#F8F7F9] px-4 py-3 font-['Fauna_One'] text-sm leading-6 text-[#2A1B3D] outline-none transition placeholder:text-[#A4B3B6] focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full resize-none rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm leading-6 text-[#2A1B3D] outline-none transition placeholder:text-[#9A929F] focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
                 />
 
-                <div className="mt-2 flex justify-end text-xs text-[#A4B3B6]">
+                <div className="mt-2 flex justify-end text-xs text-[#8C8496]">
                   {description.length} characters
                 </div>
               </div>
@@ -374,7 +374,7 @@ export default function RequirementCreatePage() {
                           )}
                         </div>
 
-                        <p className="mt-2 font-['Fauna_One'] text-xs leading-5 text-[#A4B3B6]">
+                        <p className="mt-2 font-['Fauna_One'] text-xs leading-5 text-[#6E6658]">
                           {option.description}
                         </p>
                       </button>
@@ -394,7 +394,7 @@ export default function RequirementCreatePage() {
               <div className="flex flex-col-reverse gap-3 border-t border-[#E9E6EC] pt-6 sm:flex-row sm:justify-end">
                 <Link
                   to="/requirements"
-                  className={`inline-flex items-center justify-center rounded-xl border border-[#E9E6EC] px-5 py-3 font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D] transition hover:bg-[#F8F7F9] ${
+                  className={`inline-flex items-center justify-center rounded-full border border-[#E9E2EA] px-5 py-3 font-['Unica_One'] text-[10px] uppercase tracking-wide text-[#2A1B3D] transition hover:bg-[#FCFAF8] ${
                     loading
                       ? "pointer-events-none opacity-50"
                       : ""
@@ -418,7 +418,7 @@ export default function RequirementCreatePage() {
 
           {/* Sidebar */}
           <div className="space-y-5">
-            <Card className="border-[#E9E6EC] bg-white shadow-sm">
+            <Card className="border-[#E9E2EA] bg-white shadow-[0_8px_28px_rgba(42,27,61,0.04)]">
               <div className="flex items-center gap-2">
                 <Users
                   size={18}

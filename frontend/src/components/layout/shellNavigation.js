@@ -13,6 +13,9 @@ import {
   Building2,
   Stethoscope,
   Truck,
+  History,
+  FileKey2,
+  Flag,
 } from "lucide-react";
 
 /* =========================================================
@@ -249,6 +252,37 @@ export const ADMIN_NAV = [
     label: "Verifications",
     icon: ShieldCheck,
     match: ["/admin/verifications"],
+  },
+  {
+    href: "/admin/authorizations",
+    label: "Company authorizations",
+    icon: FileKey2,
+    match: ["/admin/authorizations"],
+  },
+  {
+    href: "/admin/reports",
+    label: "Reports & safety",
+    icon: Flag,
+    match: ["/admin/reports"],
+  },
+  {
+    href: "/admin/audit",
+    label: "Audit trail",
+    icon: History,
+    match: ["/admin/audit"],
+  },
+  {
+    href: "/notifications",
+    label: "Notifications",
+    icon: Bell,
+    match: ["/notifications"],
+    badge: "notifications",
+  },
+  {
+    href: "/admin/profile",
+    label: "My admin profile",
+    icon: UserCircle,
+    match: ["/admin/profile"],
   },
 ];
 

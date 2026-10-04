@@ -46,6 +46,14 @@ function initRealtime(httpServer) {
     for (const userId of evt.userIds) io.to(`user:${userId}`).emit("message:new", evt.payload);
   });
 
+  realtimeBus.on("message:updated", (evt) => {
+    for (const userId of evt.userIds) io.to(`user:${userId}`).emit("message:updated", evt.payload);
+  });
+
+  realtimeBus.on("message:deleted", (evt) => {
+    for (const userId of evt.userIds) io.to(`user:${userId}`).emit("message:deleted", evt.payload);
+  });
+
   realtimeBus.on("appointment:updated", (evt) => {
     for (const userId of evt.userIds) io.to(`user:${userId}`).emit("appointment:updated", evt.payload);
   });

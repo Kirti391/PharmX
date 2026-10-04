@@ -316,15 +316,16 @@ export default function LeadsPage() {
   if (leads === null) return <Loader />;
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-7">
+      <header className="flex flex-wrap items-center justify-between gap-4 rounded-[22px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:p-7">
         <div>
-          <h1 className="font-display text-2xl font-bold text-navy">Leads & follow-ups</h1>
-          <p className="mt-1 max-w-2xl text-sm text-taupe">
+          <p className="font-nav text-[9px] uppercase tracking-[0.18em] text-primary">Relationship workspace</p>
+          <h1 className="mt-2 font-display text-2xl font-semibold text-navy sm:text-3xl">Leads & follow-ups</h1>
+          <p className="mt-2 max-w-2xl text-xs leading-6 text-[#6E6658]">
             Keep track of professional relationships and reminders. Leads are limited to accepted connections and authorized company scope.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="ghost" onClick={() => refreshData().catch((e) => setError(apiErrorMessage(e, "Unable to refresh leads.")))}>
             <RefreshCw size={16} /> Refresh
           </Button>
@@ -435,7 +436,7 @@ export default function LeadsPage() {
       )}
 
       <section className="space-y-4">
-        <h2 className="font-display text-lg font-semibold text-navy">Pipeline ({leads.length})</h2>
+        <h2 className="border-l-[3px] border-purple pl-3 font-display text-lg font-semibold text-navy">Pipeline <span className="font-nav text-xs text-[#8C8496]">({leads.length})</span></h2>
         {leads.length === 0 ? (
           <Card>
             <EmptyState title="No leads yet" subtitle="Create a lead from an accepted professional connection to start tracking its progress." />

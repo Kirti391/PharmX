@@ -248,19 +248,19 @@ export default function RequirementEditPage() {
           Back to requirements
         </Link>
 
-        <Card className="mt-6 border-red-200 bg-red-50">
+        <Card className="mt-6 border-[#E98074]/30 bg-[#FCF4F0]">
           <div className="flex gap-3">
             <AlertCircle
               size={20}
-              className="mt-0.5 shrink-0 text-red-600"
+              className="mt-0.5 shrink-0 text-[#E98074]"
             />
 
             <div>
-              <h2 className="font-['Cinzel'] font-semibold text-red-800">
+              <h2 className="font-['Cinzel'] font-semibold text-[#2A1B3D]">
                 Unable to open requirement
               </h2>
 
-              <p className="mt-1 font-['Fauna_One'] text-sm leading-6 text-red-700">
+              <p className="mt-1 font-['Fauna_One'] text-sm leading-6 text-[#6E6658]">
                 {error || "The requirement could not be found."}
               </p>
             </div>
@@ -275,9 +275,9 @@ export default function RequirementEditPage() {
     requirement.status === "CLOSED";
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-4xl space-y-6">
       {/* Header */}
-      <div className="mb-8">
+      <div className="rounded-[22px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:p-7">
         <Link
           to={`/requirements/${id}`}
           className="inline-flex items-center gap-2 text-sm font-medium text-[#44318D] transition-colors hover:text-[#D83F87]"
@@ -287,16 +287,16 @@ export default function RequirementEditPage() {
         </Link>
 
         <div className="mt-5 flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#44318D]/10 text-[#44318D]">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EFEBF9] text-purple">
             <FileText size={23} />
           </div>
 
           <div>
-            <h1 className="font-['Cinzel'] text-2xl font-semibold text-[#2A1B3D]">
+            <h1 className="font-['Cinzel'] text-2xl font-semibold text-[#2A1B3D] sm:text-3xl">
               Edit Requirement
             </h1>
 
-            <p className="mt-1.5 font-['Fauna_One'] text-sm leading-6 text-[#A4B3B6]">
+            <p className="mt-1.5 font-['Fauna_One'] text-xs leading-6 text-[#6E6658]">
               Update the procurement details of your requirement.
             </p>
           </div>
@@ -305,7 +305,7 @@ export default function RequirementEditPage() {
 
       {/* Closed warning */}
       {isClosed && (
-        <div className="mb-6 flex gap-3 rounded-xl border border-[#E98074]/30 bg-[#E98074]/10 px-4 py-3">
+        <div className="flex gap-3 rounded-2xl border border-[#E98074]/30 bg-[#FCF4F0] px-4 py-3">
           <AlertCircle
             size={19}
             className="mt-0.5 shrink-0 text-[#E98074]"
@@ -316,7 +316,7 @@ export default function RequirementEditPage() {
               Requirement is {requirement.status}
             </p>
 
-            <p className="mt-1 font-['Fauna_One'] text-xs leading-5 text-[#A4B3B6]">
+            <p className="mt-1 font-['Fauna_One'] text-xs leading-5 text-[#6E6658]">
               This requirement has already reached a final state. Your
               backend may reject changes to it.
             </p>
@@ -325,7 +325,7 @@ export default function RequirementEditPage() {
       )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="overflow-hidden border-[#E9E6EC] bg-white p-0 shadow-sm">
+        <Card className="overflow-hidden border-[#E9E2EA] bg-white p-0 shadow-[0_8px_28px_rgba(42,27,61,0.04)]">
           <div className="border-b border-[#E9E6EC] px-6 py-5">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -333,19 +333,19 @@ export default function RequirementEditPage() {
                   Requirement details
                 </h2>
 
-                <p className="mt-1 text-xs text-[#A4B3B6]">
+                <p className="mt-1 text-xs text-[#8C8496]">
                   Keep the information accurate so matching suppliers receive
                   useful context.
                 </p>
               </div>
 
-              <span className="shrink-0 rounded-full bg-[#44318D]/10 px-3 py-1 font-['Unica_One'] text-xs uppercase tracking-wide text-[#44318D]">
+              <span className="shrink-0 rounded-full bg-[#EFEBF9] px-3 py-1 font-['Unica_One'] text-xs uppercase tracking-wide text-purple">
                 {requirement.status || "OPEN"}
               </span>
             </div>
           </div>
 
-          <div className="space-y-6 p-6">
+          <div className="space-y-6 p-5 sm:p-7">
             {/* Category */}
             <div>
               <label
@@ -360,7 +360,7 @@ export default function RequirementEditPage() {
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 disabled={saving}
-                className="w-full rounded-xl border border-[#E9E6EC] bg-[#F8F7F9] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value="">Select category</option>
 
@@ -387,7 +387,7 @@ export default function RequirementEditPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={saving}
-                className="w-full rounded-xl border border-[#E9E6EC] bg-[#F8F7F9] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </div>
 
@@ -406,10 +406,10 @@ export default function RequirementEditPage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={saving}
-                className="w-full resize-none rounded-xl border border-[#E9E6EC] bg-[#F8F7F9] px-4 py-3 font-['Fauna_One'] text-sm leading-6 text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full resize-none rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm leading-6 text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
               />
 
-              <div className="mt-2 flex justify-end text-xs text-[#A4B3B6]">
+              <div className="mt-2 flex justify-end text-xs text-[#8C8496]">
                 {description.length} characters
               </div>
             </div>
@@ -455,7 +455,7 @@ export default function RequirementEditPage() {
                         )}
                       </div>
 
-                      <p className="mt-2 font-['Fauna_One'] text-xs leading-5 text-[#A4B3B6]">
+                      <p className="mt-2 font-['Fauna_One'] text-xs leading-5 text-[#6E6658]">
                         {option.description}
                       </p>
                     </button>
@@ -483,10 +483,10 @@ export default function RequirementEditPage() {
                 onChange={(e) => setProducts(e.target.value)}
                 disabled={saving}
                 placeholder="e.g. Atorvastatin, Pantoprazole, Metformin"
-                className="w-full rounded-xl border border-[#E9E6EC] bg-[#F8F7F9] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] placeholder:text-[#A4B3B6] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] placeholder:text-[#9A929F] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
               />
 
-              <p className="mt-2 font-['Fauna_One'] text-xs leading-5 text-[#A4B3B6]">
+              <p className="mt-2 font-['Fauna_One'] text-xs leading-5 text-[#6E6658]">
                 Note: your current backend Requirement model does not persist
                 this field yet. It is displayed here for the UI, but the
                 current PATCH request intentionally sends only fields your
@@ -512,7 +512,7 @@ export default function RequirementEditPage() {
             <div className="flex flex-col-reverse gap-3 border-t border-[#E9E6EC] pt-6 sm:flex-row sm:justify-end">
               <Link
                 to={`/requirements/${id}`}
-                className={`inline-flex items-center justify-center rounded-xl border border-[#E9E6EC] px-5 py-3 font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D] transition hover:bg-[#F8F7F9] ${
+                className={`inline-flex items-center justify-center rounded-full border border-[#E9E2EA] px-5 py-3 font-['Unica_One'] text-[10px] uppercase tracking-wide text-[#2A1B3D] transition hover:bg-[#FCFAF8] ${
                   saving ? "pointer-events-none opacity-50" : ""
                 }`}
               >

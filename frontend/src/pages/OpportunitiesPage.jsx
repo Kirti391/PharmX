@@ -152,17 +152,16 @@ export default function OpportunitiesPage() {
           HEADER
           ===================================================== */}
 
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-
+      <div className="flex flex-col gap-5 rounded-[22px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.04)] sm:flex-row sm:items-center sm:justify-between sm:p-7">
         <div>
           <div
             className="
               mb-2
               font-nav
-              text-[10px]
+              text-[9px]
               uppercase
-              tracking-[0.24em]
-              text-[#D83F87]
+              tracking-[0.2em]
+              text-primary
             "
           >
             {isPharmacy ? "Requirement Responses" : "Professional Network"}
@@ -171,11 +170,11 @@ export default function OpportunitiesPage() {
           <h1
             className="
               font-display
-              text-3xl
+              text-2xl
               font-semibold
               tracking-tight
               text-[#2A1B3D]
-              sm:text-4xl
+              sm:text-3xl
             "
           >
             {pageTitle}
@@ -186,9 +185,9 @@ export default function OpportunitiesPage() {
               mt-2
               max-w-2xl
               font-body
-              text-sm
+              text-xs
               leading-6
-              text-[#A4B3B6]
+              text-[#6E6658]
             "
           >
             {pageDescription}
@@ -199,12 +198,14 @@ export default function OpportunitiesPage() {
           <Link to="/opportunities/create">
             <Button
               className="
-                rounded-xl
-                bg-[#D83F87]
+                rounded-full
+                bg-primary
                 px-5
-                py-2.5
+                py-3
                 font-nav
-                text-sm
+                text-[9px]
+                uppercase
+                tracking-[0.12em]
                 text-white
                 shadow-[0_8px_24px_rgba(216,63,135,0.18)]
                 hover:bg-[#44318D]
@@ -225,7 +226,7 @@ export default function OpportunitiesPage() {
         <div
           className="
             overflow-hidden
-            rounded-2xl
+            rounded-[20px]
             border border-[#E9E6EC]
             bg-white
             shadow-[0_8px_30px_rgba(42,27,61,0.05)]

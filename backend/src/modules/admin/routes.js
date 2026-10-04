@@ -1,4 +1,5 @@
 const express = require("express");
+const { z } = require("zod");
 const { asyncHandler, requireAuth, requireRole } = require("../../common/middleware");
 const { fail, ok } = require("../../common/http");
 const User = require("../../models/User");
@@ -9,6 +10,7 @@ const PharmaCompanyProfile = require("../../models/PharmaCompanyProfile");
 const VerificationDocument = require("../../models/VerificationDocument");
 const Report = require("../../models/Report");
 const AuditLog = require("../../models/AuditLog");
+const Notification = require("../../models/Notification");
 const CompanyAuthorization = require("../../models/CompanyAuthorization");
 const Requirement = require("../../models/Requirement");
 const Opportunity = require("../../models/Opportunity");
@@ -17,7 +19,7 @@ const Message = require("../../models/Message");
 const { recordAudit } = require("../../common/audit");
 const { createNotification } = require("../notifications/service");
 const { getDisplayProfile } = require("../profiles/service");
-const { PRODUCT_CATEGORIES } = require("../../common/constants");
+const { DOC_TYPES, PRODUCT_CATEGORIES, ROLES } = require("../../common/constants");
 
 async function refreshBusinessVerification(userId, role) {
   const requiredByRole = {
@@ -252,6 +254,14 @@ router.patch(
   asyncHandler(async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) return fail(res, 404, "NOT_FOUND", "User not found");
+    if (user.role === "ADMIN") {
+      return fail(
+        res,
+        403,
+        "ADMIN_RESTRICTION",
+        "Administrator accounts cannot be suspended through user management"
+      );
+    }
 
     user.status = "SUSPENDED";
     await user.save();
@@ -309,22 +319,76 @@ router.patch(
   })
 );
 
+router.patch(
+  "/users/:id/restore",
+  asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id);
+    if (!user) return fail(res, 404, "NOT_FOUND", "User not found");
+    if (user.status !== "SUSPENDED") {
+      return fail(
+        res,
+        409,
+        "ACCOUNT_NOT_SUSPENDED",
+        "Only suspended accounts can be restored"
+      );
+    }
+    user.status = "ACTIVE";
+    await user.save();
+    await recordAudit({
+      userId: req.user.sub,
+      action: "ADMIN_RESTORED_USER",
+      targetType: "User",
+      targetId: user._id.toString(),
+      metadata: { status: "ACTIVE" },
+    });
+    await createNotification({
+      userId: user._id,
+      type: "SYSTEM",
+      title: "Account restored",
+      body: "Your account access has been restored. Business verification status remains unchanged.",
+    });
+    ok(res, publicUser(user));
+  })
+);
+
 router.get(
   "/verifications",
   asyncHandler(async (req, res) => {
     const status = req.query.status || "PENDING";
-    const rows = await VerificationDocument.find({ status }).sort({ createdAt: -1 });
+    if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) {
+      return fail(res, 400, "VALIDATION_ERROR", "Invalid verification status filter");
+    }
+    if (req.query.docType && !DOC_TYPES.includes(req.query.docType)) {
+      return fail(res, 400, "VALIDATION_ERROR", "Invalid document type filter");
+    }
+    if (req.query.role && !ROLES.includes(req.query.role)) {
+      return fail(res, 400, "VALIDATION_ERROR", "Invalid account role filter");
+    }
+    const query = { status };
+    if (req.query.docType) query.docType = req.query.docType;
+    if (req.query.role) {
+      const matchingUsers = await User.find({ role: req.query.role }).distinct("_id");
+      query.userId = { $in: matchingUsers };
+    }
+    const rows = await VerificationDocument.find(query)
+      .sort({ createdAt: -1 })
+      .limit(500);
     ok(
       res,
-      rows.map((r) => ({
+      await Promise.all(rows.map(async (r) => {
+        const user = await User.findById(r.userId).select("email role");
+        return {
         id: r._id,
         userId: r.userId,
+        userEmail: user?.email || null,
+        role: user?.role || null,
         docType: r.docType,
         companyId: r.companyId,
         fileUrl: r.fileUrl,
         expiryDate: r.expiryDate,
         status: r.status,
         createdAt: r.createdAt,
+        };
       }))
     );
   })
@@ -605,7 +669,17 @@ router.patch(
 router.get(
   "/reports",
   asyncHandler(async (req, res) => {
-    const rows = await Report.find().sort({ createdAt: -1 });
+    const query = {};
+    if (req.query.status) {
+      if (!["OPEN", "REVIEWED", "DISMISSED"].includes(req.query.status)) {
+        return fail(res, 400, "VALIDATION_ERROR", "Invalid report status filter");
+      }
+      query.status = req.query.status;
+    }
+    if (req.query.reason) query.reason = req.query.reason;
+    const rows = await Report.find(query)
+      .sort({ createdAt: -1 })
+      .limit(500);
     ok(
       res,
       rows.map((r) => ({
@@ -621,10 +695,73 @@ router.get(
   })
 );
 
+router.patch(
+  "/reports/:id/status",
+  asyncHandler(async (req, res) => {
+    const parsed = z.object({
+      status: z.enum(["REVIEWED", "DISMISSED", "OPEN"]),
+      reason: z.string().trim().min(5).max(1000),
+    }).safeParse(req.body);
+    if (!parsed.success) {
+      return fail(
+        res,
+        400,
+        "VALIDATION_ERROR",
+        parsed.error.issues[0]?.message ?? "A status and reason are required"
+      );
+    }
+    const report = await Report.findById(req.params.id);
+    if (!report) return fail(res, 404, "NOT_FOUND", "Report not found");
+    const previousStatus = report.status;
+    report.status = parsed.data.status;
+    await report.save();
+    await recordAudit({
+      userId: req.user.sub,
+      action: "ADMIN_UPDATED_REPORT_STATUS",
+      targetType: "Report",
+      targetId: report._id.toString(),
+      metadata: {
+        previousStatus,
+        status: report.status,
+        reason: parsed.data.reason,
+      },
+    });
+    ok(res, { id: report._id, status: report.status });
+  })
+);
+
 router.get(
   "/audit-logs",
   asyncHandler(async (req, res) => {
-    const rows = await AuditLog.find().sort({ createdAt: -1 }).limit(200);
+    const query = {};
+    if (req.query.action) query.action = String(req.query.action).slice(0, 120);
+    if (req.query.targetId) query.targetId = String(req.query.targetId).slice(0, 120);
+    if (req.query.actorId && !/^[a-f\d]{24}$/i.test(String(req.query.actorId))) {
+      return fail(res, 400, "VALIDATION_ERROR", "Invalid audit actor ID");
+    }
+    if (req.query.actorId) {
+      query.userId = req.query.actorId;
+    }
+    if (req.query.from || req.query.to) {
+      query.createdAt = {};
+      if (req.query.from) {
+        const from = new Date(req.query.from);
+        if (Number.isNaN(from.getTime())) {
+          return fail(res, 400, "VALIDATION_ERROR", "Invalid audit start date");
+        }
+        query.createdAt.$gte = from;
+      }
+      if (req.query.to) {
+        const to = new Date(req.query.to);
+        if (Number.isNaN(to.getTime())) {
+          return fail(res, 400, "VALIDATION_ERROR", "Invalid audit end date");
+        }
+        query.createdAt.$lte = to;
+      }
+    }
+    const rows = await AuditLog.find(query)
+      .sort({ createdAt: -1 })
+      .limit(500);
     ok(res, rows);
   })
 );
@@ -637,7 +774,9 @@ router.get(
       return rows.map((r) => ({ [field]: r._id, count: r.count }));
     }
 
-    const [usersByRole, usersByStatus, requirementsByStatus, opportunitiesByStatus, appointmentsByStatus, totalMessages] =
+    const now = new Date();
+    const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const [usersByRole, usersByStatus, requirementsByStatus, opportunitiesByStatus, appointmentsByStatus, totalMessages, pendingVerifications, pendingAuthorizations, openReports, expiredDocuments, documentsExpiring30Days, unreadAdminNotifications] =
       await Promise.all([
         countBy(User, "role"),
         countBy(User, "status"),
@@ -645,9 +784,40 @@ router.get(
         countBy(Opportunity, "status"),
         countBy(Appointment, "status"),
         Message.countDocuments(),
+        VerificationDocument.countDocuments({ status: "PENDING" }),
+        CompanyAuthorization.countDocuments({ status: "PENDING" }),
+        Report.countDocuments({ status: "OPEN" }),
+        VerificationDocument.countDocuments({
+          expiryDate: { $ne: null, $lte: now },
+          status: "APPROVED",
+        }),
+        VerificationDocument.countDocuments({
+          expiryDate: { $gt: now, $lte: in30Days },
+          status: "APPROVED",
+        }),
+        Notification.countDocuments({ userId: req.user.sub, readAt: null }),
       ]);
 
-    ok(res, { usersByRole, usersByStatus, requirementsByStatus, opportunitiesByStatus, appointmentsByStatus, totalMessages });
+    const statusCount = (status) =>
+      usersByStatus.find((row) => row.status === status)?.count || 0;
+    ok(res, {
+      usersByRole,
+      usersByStatus,
+      requirementsByStatus,
+      opportunitiesByStatus,
+      appointmentsByStatus,
+      totalMessages,
+      pendingVerifications,
+      pendingAuthorizations,
+      openReports,
+      expiredDocuments,
+      documentsExpiring30Days,
+      unreadAdminNotifications,
+      activeUsers: statusCount("ACTIVE"),
+      pendingUsers: statusCount("PENDING_VERIFICATION"),
+      suspendedUsers: statusCount("SUSPENDED"),
+      totalUsers: usersByRole.reduce((sum, row) => sum + row.count, 0),
+    });
   })
 );
 
