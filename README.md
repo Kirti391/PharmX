@@ -42,20 +42,7 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-Open http://localhost:5173. Log in with any of the seeded demo accounts (password for all:
-`Password123!`):
 
-| Role | Email |
-|---|---|
-| Admin | `admin@pharmx.dev` |
-| Pharma Company | `company1@pharmx.dev` |
-| MR (company-affiliated) | `mr1@pharmx.dev` |
-| Independent MR | `mr2@pharmx.dev` |
-| Pharmacy | `pharmacy1@pharmx.dev` |
-| Pharmacy (pending verification) | `pending.pharmacy@pharmx.dev` |
-| Stockist | `stockist1@pharmx.dev` |
-| Distributor | `distributor1@pharmx.dev` |
-| Doctor | `doctor1@pharmx.dev` |
 
 Or sign up fresh from the landing page — since there's no OTP step, the account is usable immediately.
 Doctors and distributor/stockist accounts can register through the role selector. Administrator access
