@@ -13,7 +13,7 @@ const COLORS = {
   purple: "#44318D",
   purpleSoft: "#EFEBF9",
   pink: "#D83F87",
-  canvas: "#F7F5FA",
+  canvas: "#F5F3F8",
 };
 
 export default function MessagesPage() {

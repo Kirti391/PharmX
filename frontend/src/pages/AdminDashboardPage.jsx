@@ -28,15 +28,15 @@ function total(rows = []) {
 
 function MetricCard({ label, value, detail, icon: Icon, accent }) {
   return (
-    <div className="group relative flex min-h-[124px] items-start justify-between gap-3 border-b border-white/10 px-4 py-4 transition-colors hover:bg-white/[0.03] sm:px-5 sm:py-5">
+    <div className="group relative flex min-h-[124px] items-start justify-between gap-3 rounded-[18px] border border-[#ECE8F1] bg-white px-4 py-4 shadow-[0_5px_18px_rgba(42,27,61,0.025)] transition-shadow hover:shadow-[0_10px_24px_rgba(42,27,61,0.06)] sm:px-5 sm:py-5">
       <div>
-        <p className="font-nav text-[10px] uppercase tracking-[0.14em] text-[#AFA9BE]">
+        <p className="font-nav text-[10px] uppercase tracking-[0.14em] text-[#8C8496]">
           {label}
         </p>
-        <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-white">
+        <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-[#2A1B3D]">
           {value.toLocaleString()}
         </p>
-        <p className="mt-1.5 text-xs text-[#AFA9BE]">{detail}</p>
+        <p className="mt-1.5 text-xs text-[#8C8496]">{detail}</p>
       </div>
       <span
         className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
@@ -165,26 +165,18 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="admin-page admin-dashboard mx-auto w-full max-w-[1440px] space-y-8 sm:space-y-9">
-      <header className="relative overflow-hidden rounded-[24px] bg-[#44318D] p-6 text-white shadow-[0_18px_42px_rgba(68,49,141,0.2)] sm:p-8 lg:p-9">
-        <span
-          aria-hidden="true"
-          className="absolute -right-12 -top-20 h-64 w-64 rounded-full border-[28px] border-white/[0.08]"
-        />
-        <span
-          aria-hidden="true"
-          className="absolute -bottom-24 right-40 h-44 w-44 rounded-full bg-[#D83F87]/20 blur-2xl"
-        />
+      <header className="relative overflow-hidden rounded-[18px] border border-t-[3px] border-[#ECE8F1] border-t-[#44318D] bg-white p-6 text-[#2A1B3D] shadow-[0_6px_22px_rgba(42,27,61,0.04)] sm:p-8 lg:p-9">
         <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 font-nav text-[9px] uppercase tracking-[0.16em] text-white/90">
+            <div className="inline-flex items-center gap-2 rounded-md border border-[#ECE8F1] bg-white px-3 py-1.5 font-nav text-[9px] uppercase tracking-[0.16em] text-[#44318D]">
               <Activity size={13} />
               Administration · Platform health
             </div>
             <h1 className="mt-5 font-display text-3xl font-semibold sm:text-4xl">
               Good overview.
-              <span className="text-[#F1A4C5]"> Clear next steps.</span>
+              <span className="text-[#44318D]"> Clear next steps.</span>
             </h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-white/75">
+            <p className="mt-3 max-w-xl text-sm leading-6 text-[#5B5265]">
               Monitor the professional network, review trust workflows, and
               keep platform activity moving.
             </p>
@@ -192,7 +184,7 @@ export default function AdminDashboardPage() {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="ghost"
-              className="border-white/20 bg-white/10 text-white hover:bg-white/20"
+              className="border-[#ECE8F1] bg-white text-[#2A1B3D] hover:bg-[#F7F5FA]"
               onClick={() => {
                 setOverview(null);
                 setError("");
@@ -203,25 +195,25 @@ export default function AdminDashboardPage() {
             </Button>
             <Link
               to="/admin/users"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#ECE8F1] bg-white px-4 py-2.5 text-sm font-semibold text-[#2A1B3D] transition hover:bg-[#F7F5FA]"
             >
               Manage users
             </Link>
             <Link
               to="/admin/verifications"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#E98074] bg-[#E98074] px-4 py-2.5 text-sm font-semibold text-white transition hover:border-[#D96E63] hover:bg-[#D96E63]"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#44318D] bg-[#44318D] px-4 py-2.5 text-sm font-semibold text-white transition hover:border-[#382775] hover:bg-[#382775]"
             >
               Review documents
             </Link>
           </div>
         </div>
-        <div className="relative mt-7 flex items-center gap-2 border-t border-white/15 pt-4 text-xs text-white/70">
-          <span className="h-2 w-2 rounded-full bg-[#E98074] shadow-[0_0_0_4px_rgba(233,128,116,0.16)]" />
+        <div className="relative mt-7 flex items-center gap-2 border-t border-[#ECE8F1] pt-4 text-xs text-[#8C8496]">
+          <span className="h-2 w-2 rounded-full bg-[#E98074]" />
           Operational totals · refreshes on request
         </div>
       </header>
 
-      <section aria-label="Platform metrics" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <section aria-label="Platform metrics" className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
         <MetricCard
           label="Registered accounts"
           value={overview.totalUsers ?? total(overview.usersByRole)}

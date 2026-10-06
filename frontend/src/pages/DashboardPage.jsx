@@ -107,7 +107,7 @@ function PharmacyDashboard({ data, user }) {
   return (
     <main
       className="min-h-screen"
-      style={{ backgroundColor: "#FCFAF8", color: SURFACE.ink }}
+      style={{ backgroundColor: SURFACE.canvas, color: SURFACE.ink }}
     >
       <div className="mx-auto max-w-[1480px] px-4 py-8 sm:px-7 sm:py-10 lg:px-10 lg:py-12">
         <DashboardHero
@@ -259,6 +259,20 @@ const ROLE_DASHBOARD_CONTENT = {
       ["Manage appointments", "/appointments"],
     ],
   },
+  INDEPENDENT_MR: {
+    title: "Independent representative workspace",
+    description:
+      "Find relevant opportunities, follow pharmacy demand, and plan professional appointments.",
+    actions: [
+      ["Find pharmacies", "/discover/pharmacies"],
+      ["Company opportunities", "/opportunities"],
+      ["Manage leads & follow-ups", "/leads"],
+      ["Browse product catalogue", "/catalogue"],
+      ["Find distributors", "/discover/stockists"],
+      ["Company authorizations", "/authorizations"],
+      ["Manage appointments", "/appointments"],
+    ],
+  },
   PHARMA_COMPANY: {
     title: "Pharmaceutical company workspace",
     description:
@@ -352,14 +366,14 @@ function RoleDashboard({ data, user }) {
   return (
     <main
       className="min-h-screen px-4 py-7 sm:px-6 lg:px-9 lg:py-10"
-      style={{ backgroundColor: SURFACE.sectionCanvas }}
+      style={{ backgroundColor: SURFACE.canvas }}
     >
       <div className="mx-auto max-w-[1440px]">
         <header
           className="relative overflow-hidden rounded-[18px] border border-t-[3px] px-5 py-7 shadow-[0_6px_22px_rgba(42,27,61,0.04)] sm:px-8 sm:py-8 lg:px-10"
           style={{
             borderColor: SURFACE.hairline,
-            borderTopColor: SURFACE.pink,
+            borderTopColor: SURFACE.purple,
             backgroundColor: SURFACE.paper,
           }}
         >
@@ -410,7 +424,7 @@ function RoleDashboard({ data, user }) {
             <Link
               to="/profile"
               className="group inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-5 font-nav text-[10px] uppercase tracking-[0.1em] text-white transition hover:brightness-105"
-              style={{ backgroundColor: SURFACE.pink }}
+              style={{ backgroundColor: SURFACE.purple }}
             >
               {isDoctor ? "Manage profile & preferences" : "Complete your profile"}
               <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
@@ -429,7 +443,7 @@ function RoleDashboard({ data, user }) {
             : [
                 [isDistributor ? "Pharmacy requirements" : "Open requirements", stats.openRequirements],
                 ["Open opportunities", stats.openOpportunities],
-                ...(user?.role === "MR"
+                ...(user?.role === "MR" || user?.role === "INDEPENDENT_MR"
                   ? [["Active authorizations", stats.activeAuthorizations]]
                   : user?.role === "PHARMA_COMPANY"
                     ? [["MR authorization requests", stats.pendingAuthorizations]]
@@ -445,13 +459,13 @@ function RoleDashboard({ data, user }) {
             return (
             <div
               key={label}
-              className="group relative overflow-hidden rounded-[20px] border bg-white p-4 shadow-[0_8px_26px_rgba(42,27,61,0.035)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(42,27,61,0.07)] sm:p-5"
+              className="group relative overflow-hidden rounded-[18px] border bg-white p-4 shadow-[0_5px_18px_rgba(42,27,61,0.025)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(42,27,61,0.06)] sm:p-5"
               style={{ borderColor: SURFACE.hairline }}
             >
               <span
                 aria-hidden="true"
-                className="absolute right-0 top-0 h-16 w-16 rounded-bl-[36px] opacity-70 transition-transform group-hover:scale-110"
-                style={{ backgroundColor: accent.background }}
+                className="absolute inset-x-0 top-0 h-1"
+                style={{ backgroundColor: accent.color }}
               />
               <p className="relative font-editorial text-2xl font-semibold sm:text-[28px]" style={{ color: accent.color }}>
                 {Number(value) || 0}
@@ -464,9 +478,9 @@ function RoleDashboard({ data, user }) {
           })}
         </section>
 
-        <section className="mt-7 grid min-w-0 gap-6 xl:mt-8 xl:grid-cols-[minmax(0,1.3fr)_minmax(300px,0.7fr)] xl:gap-7">
-          <div className="min-w-0 space-y-6">
-            <section className="rounded-[22px] border bg-white p-5 shadow-[0_10px_30px_rgba(42,27,61,0.035)] sm:p-7" style={{ borderColor: SURFACE.hairline }}>
+        <section className="mt-7 grid min-w-0 grid-flow-dense gap-5 sm:grid-cols-2 xl:mt-8 xl:grid-cols-4 xl:gap-6">
+          <div className="contents">
+            <section className="rounded-[18px] border bg-white p-5 shadow-[0_5px_18px_rgba(42,27,61,0.025)] sm:col-span-2 sm:p-6 xl:col-span-2" style={{ borderColor: SURFACE.hairline }}>
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="workspace-label" style={{ color: SURFACE.coral }}>
@@ -554,8 +568,8 @@ function RoleDashboard({ data, user }) {
               )}
             </section>
 
-            {(user?.role === "MR" || user?.role === "PHARMA_COMPANY" || user?.role === "DISTRIBUTOR_STOCKIST") && (
-              <section className="rounded-[22px] border bg-white p-5 shadow-[0_10px_30px_rgba(42,27,61,0.035)] sm:p-7" style={{ borderColor: SURFACE.hairline }}>
+            {(user?.role === "MR" || user?.role === "INDEPENDENT_MR" || user?.role === "PHARMA_COMPANY" || user?.role === "DISTRIBUTOR_STOCKIST") && (
+              <section className="rounded-[18px] border bg-white p-5 shadow-[0_5px_18px_rgba(42,27,61,0.025)] sm:col-span-2 sm:p-6 xl:col-span-2" style={{ borderColor: SURFACE.hairline }}>
                 <div className="flex items-end justify-between gap-3">
                   <div>
                     <p className="workspace-label" style={{ color: SURFACE.purple }}>
@@ -589,9 +603,9 @@ function RoleDashboard({ data, user }) {
             )}
           </div>
 
-          <aside className="space-y-7">
+          <aside className="contents" aria-label="Profile, actions, and notifications">
             {isDoctor ? (
-              <section className="rounded-[22px] border bg-white p-5 shadow-[0_10px_30px_rgba(42,27,61,0.035)] sm:p-6" style={{ borderColor: SURFACE.hairline }}>
+              <section className="rounded-[18px] border bg-white p-5 shadow-[0_5px_18px_rgba(42,27,61,0.025)] sm:p-6" style={{ borderColor: SURFACE.hairline }}>
                 <p className="workspace-label" style={{ color: SURFACE.purple }}>Professional profile</p>
                 <h2 className="mt-2 font-editorial text-lg font-semibold" style={{ color: SURFACE.ink }}>
                   {profile.fullName || name}
@@ -639,7 +653,7 @@ function RoleDashboard({ data, user }) {
                 </div>
               </section>
             ) : (
-            <section className="rounded-[22px] border bg-white p-5 shadow-[0_10px_30px_rgba(42,27,61,0.035)] sm:p-6" style={{ borderColor: SURFACE.hairline }}>
+            <section className="rounded-[18px] border bg-white p-5 shadow-[0_5px_18px_rgba(42,27,61,0.025)] sm:p-6" style={{ borderColor: SURFACE.hairline }}>
               <p className="workspace-label" style={{ color: SURFACE.purple }}>
                 Your profile
               </p>
@@ -693,7 +707,7 @@ function RoleDashboard({ data, user }) {
             )}
 
             {isDoctor && (
-              <section className="rounded-[22px] border bg-white p-5 shadow-[0_10px_30px_rgba(42,27,61,0.035)] sm:p-6" style={{ borderColor: SURFACE.hairline }}>
+              <section className="rounded-[18px] border bg-white p-5 shadow-[0_5px_18px_rgba(42,27,61,0.025)] sm:p-6" style={{ borderColor: SURFACE.hairline }}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="workspace-label" style={{ color: SURFACE.coral }}>Your calendar</p>
@@ -720,19 +734,19 @@ function RoleDashboard({ data, user }) {
               </section>
             )}
 
-            <section className="rounded-[16px] border px-5 py-6 shadow-[0_8px_22px_rgba(42,27,61,0.10)] sm:px-6" style={{ borderColor: SURFACE.purple, backgroundColor: SURFACE.purple, color: SURFACE.paper }}>
-              <h2 className="font-editorial text-lg font-semibold">Role-specific actions</h2>
+            <section className="rounded-[18px] border bg-white p-5 shadow-[0_5px_18px_rgba(42,27,61,0.025)] sm:p-6" style={{ borderColor: SURFACE.hairline }}>
+              <h2 className="font-editorial text-lg font-semibold" style={{ color: SURFACE.ink }}>Quick actions</h2>
               <div className="relative mt-4 space-y-2">
                 {content.actions.map(([label, href]) => (
-                  <Link key={href + label} to={href} className="group flex min-h-11 items-center justify-between gap-3 rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-3 font-body text-xs transition-colors hover:bg-white/10">
+                  <Link key={href + label} to={href} className="group flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3.5 py-3 font-body text-xs transition-colors hover:bg-[#F7F5FA]" style={{ borderColor: SURFACE.hairline, color: SURFACE.inkSoft }}>
                     {label}
-                    <ArrowRight size={14} className="shrink-0 transition-transform group-hover:translate-x-0.5" />
+                    <ArrowRight size={14} className="shrink-0 transition-transform group-hover:translate-x-0.5" style={{ color: SURFACE.purple }} />
                   </Link>
                 ))}
               </div>
             </section>
 
-            <section className="rounded-[22px] border bg-white p-5 shadow-[0_10px_30px_rgba(42,27,61,0.035)] sm:p-6" style={{ borderColor: SURFACE.hairline }}>
+            <section className="rounded-[18px] border bg-white p-5 shadow-[0_5px_18px_rgba(42,27,61,0.025)] sm:p-6" style={{ borderColor: SURFACE.hairline }}>
               <div className="flex items-center justify-between">
                 <h2 className="font-editorial text-lg font-semibold" style={{ color: SURFACE.ink }}>Notifications</h2>
                 <Link to="/notifications" aria-label="View notifications" style={{ color: SURFACE.pink }}>

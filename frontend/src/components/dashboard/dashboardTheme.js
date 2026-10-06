@@ -4,7 +4,7 @@
 ========================================================= */
 
 export const SURFACE = {
-  canvas: "#FBFAFC",
+  canvas: "#F5F3F8",
   paper: "#FFFFFF",
   hairline: "#ECE8F1",
 

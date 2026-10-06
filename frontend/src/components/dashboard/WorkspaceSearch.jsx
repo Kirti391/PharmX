@@ -40,10 +40,10 @@ export function WorkspaceSearch({
   resultCount = null,
 }) {
   return (
-    <div className="rounded-[18px] border bg-[#F7F5FA] p-3 sm:p-3.5">
+    <div className="rounded-[18px] bg-[#F7F5FA] p-3 sm:p-3.5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div
-          className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-xl border bg-white px-4 transition-colors duration-200 focus-within:border-[#D83F87]/45 sm:px-5"
+          className="dashboard-search-field flex h-12 min-w-0 flex-1 items-center gap-3 rounded-xl border bg-white px-4 sm:px-5"
           style={{ borderColor: SURFACE.hairline }}
         >
           <Search
@@ -59,10 +59,7 @@ export function WorkspaceSearch({
             onChange={(event) => onChange(event.target.value)}
             placeholder="Search requirements, suppliers or connections"
             aria-label="Search the pharmacy workspace"
-            className="
-            h-full min-w-0 flex-1 bg-transparent font-body text-[12px]
-            outline-none placeholder:text-[#A9A1B4]
-          "
+            className="dashboard-search-input h-full min-w-0 flex-1 appearance-none bg-transparent font-body text-[12px] outline-none placeholder:text-[#A9A1B4] [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
             style={{ color: SURFACE.ink }}
           />
 

@@ -42,7 +42,7 @@
 
 html {
   min-width: 320px;
-  background-color: #FCFAF8;
+  background-color: #F5F3F8;
   overflow-x: clip;
 }
 
@@ -54,7 +54,7 @@ body {
 
   font-family: "Fauna One", serif;
 
-  background-color: #FCFAF8;
+  background-color: #F5F3F8;
   color: #2A1B3D;
 
   -webkit-font-smoothing: antialiased;
@@ -104,7 +104,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #FCFAF8;
+  background: #F5F3F8;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -400,7 +400,7 @@ body {
 
 .admin-shell {
   min-height: 100vh;
-  background: #11131d;
+  background: #F5F3F8;
   color: #f4f0f8;
 }
 
@@ -463,9 +463,15 @@ body {
 
 .admin-main {
   min-height: 100vh;
-  background:
-    radial-gradient(ellipse at 95% 0%, rgba(68, 49, 141, 0.16), transparent 38rem),
-    #11131d;
+  background: #F5F3F8;
+}
+
+.dashboard-search-input:focus-visible {
+  outline: none;
+}
+
+.dashboard-search-field:focus-within {
+  box-shadow: 0 0 0 2px rgba(68, 49, 141, 0.12);
 }
 
 .admin-page {

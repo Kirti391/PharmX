@@ -411,10 +411,14 @@ export default function DiscoverMRsPage() {
               const specializations = normalizeArray(
                 mr.specializations
               );
+              const languages = normalizeArray(mr.languages);
 
               const territories = normalizeArray(
                 mr.territories
               );
+              const companiesRepresented = String(
+                mr.companiesRepresented || ""
+              ).trim();
 
               const name =
                 mr.fullName ||
@@ -563,6 +567,31 @@ export default function DiscoverMRsPage() {
                       >
                         {mr.bio}
                       </p>
+                    )}
+
+                    {(companiesRepresented || languages.length > 0) && (
+                      <div className="grid gap-3 rounded-xl bg-[#F5F3F8] p-3 text-xs sm:grid-cols-2">
+                        {companiesRepresented && (
+                          <div>
+                            <p className="font-semibold uppercase tracking-wide" style={{ color: COLORS.muted }}>
+                              Company represented
+                            </p>
+                            <p className="mt-1 leading-5" style={{ color: COLORS.navy }}>
+                              {companiesRepresented}
+                            </p>
+                          </div>
+                        )}
+                        {languages.length > 0 && (
+                          <div>
+                            <p className="font-semibold uppercase tracking-wide" style={{ color: COLORS.muted }}>
+                              Languages
+                            </p>
+                            <p className="mt-1 leading-5" style={{ color: COLORS.navy }}>
+                              {languages.join(", ")}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     {/* Specializations */}

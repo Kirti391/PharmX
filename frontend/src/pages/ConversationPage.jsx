@@ -17,6 +17,7 @@ import { apiErrorMessage, http } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
 import { Button, ErrorState, Loader } from "../components/ui";
 import { getSocket, useRealtimeEvent } from "../lib/socket";
+import { canEditMessage } from "../lib/messageEditing";
 
 const SURFACE = {
   canvas: "#F5F3F8",
@@ -59,7 +60,18 @@ export default function ConversationPage() {
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [reloadCount, setReloadCount] = useState(0);
+  const [now, setNow] = useState(0);
   const bottomRef = useRef(null);
+
+  useEffect(() => {
+    const updateNow = () => setNow(Date.now());
+    const initialUpdate = window.setTimeout(updateNow, 0);
+    const timer = window.setInterval(updateNow, 1000);
+    return () => {
+      window.clearTimeout(initialUpdate);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -152,6 +164,7 @@ export default function ConversationPage() {
   }
 
   function startEditing(message) {
+    if (!canEditMessage(message)) return;
     setEditingId(message.id);
     setEditDraft(message.body);
     setError("");
@@ -161,6 +174,13 @@ export default function ConversationPage() {
     event.preventDefault();
     const body = editDraft.trim();
     if (!body || !editingId || savingEdit) return;
+    const messageBeingEdited = messages?.find((item) => item.id === editingId);
+    if (!canEditMessage(messageBeingEdited)) {
+      setEditingId(null);
+      setEditDraft("");
+      setError("Messages can only be edited within 2 minutes of sending.");
+      return;
+    }
     setSavingEdit(true);
     setError("");
     try {
@@ -316,7 +336,7 @@ export default function ConversationPage() {
                         ? { backgroundColor: SURFACE.purple, color: "white" }
                         : { borderColor: SURFACE.line, backgroundColor: SURFACE.paper, color: SURFACE.ink }}
                     >
-                      {editingId === message.id ? (
+                      {editingId === message.id && canEditMessage(message, now) ? (
                         <form onSubmit={saveEdit}>
                           <textarea
                             autoFocus
@@ -347,14 +367,16 @@ export default function ConversationPage() {
                           </div>
                           {mine && !message.isDeleted && (
                             <div className="mt-2 flex justify-end gap-1 border-t border-white/15 pt-2">
-                              <button
-                                type="button"
-                                onClick={() => startEditing(message)}
-                                className="inline-flex min-h-8 items-center gap-1 rounded-lg px-2 text-[11px] text-white/85 transition hover:bg-white/10"
-                                aria-label="Edit message"
-                              >
-                                <Pencil size={13} /> Edit
-                              </button>
+                              {canEditMessage(message, now) && (
+                                <button
+                                  type="button"
+                                  onClick={() => startEditing(message)}
+                                  className="inline-flex min-h-8 items-center gap-1 rounded-lg px-2 text-[11px] text-white/85 transition hover:bg-white/10"
+                                  aria-label="Edit message"
+                                >
+                                  <Pencil size={13} /> Edit
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => deleteMessage(message)}

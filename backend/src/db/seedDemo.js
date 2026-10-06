@@ -35,6 +35,63 @@ const CATEGORIES = [
   "General Medicine",
   "Neurology",
 ];
+const MR_DEMO_DETAILS = [
+  {
+    experienceYears: 6,
+    bio: "Fictional demo representative with a six-year track record supporting pharmacy teams across Karnal, Panipat, and Kurukshetra. Focused on ethical product education, territory planning, and reliable follow-up in dermatology and general medicine.",
+    languages: ["Hindi", "English", "Punjabi"],
+    specializations: ["Dermatology", "General Medicine"],
+    territories: ["Karnal, Haryana", "Panipat, Haryana", "Kurukshetra, Haryana"],
+    companiesRepresented: "Northstar Therapeutics",
+    workMode: "HYBRID",
+    isIndependent: false,
+    availabilityStatus: "AVAILABLE",
+  },
+  {
+    experienceYears: 4,
+    bio: "Fictional demo representative experienced in building pharmacy relationships across Jaipur, Ajmer, and nearby Rajasthan districts. Provides compliant product information and structured account follow-up for cardiology and pediatrics.",
+    languages: ["Hindi", "English", "Rajasthani"],
+    specializations: ["Cardiology", "Pediatrics"],
+    territories: ["Jaipur, Rajasthan", "Ajmer, Rajasthan", "Sikar, Rajasthan"],
+    companiesRepresented: "Asterion Life Sciences",
+    workMode: "FIELD",
+    isIndependent: false,
+    availabilityStatus: "AVAILABLE",
+  },
+  {
+    experienceYears: 6,
+    bio: "Fictional demo representative serving Pune, Pimpri-Chinchwad, and Satara. Supports professional education and territory coordination across general medicine and neurology.",
+    languages: ["Marathi", "Hindi", "English"],
+    specializations: ["General Medicine", "Neurology"],
+    territories: ["Pune, Maharashtra", "Pimpri-Chinchwad, Maharashtra", "Satara, Maharashtra"],
+    companiesRepresented: "BluePeak Pharma",
+    workMode: "HYBRID",
+    isIndependent: false,
+    availabilityStatus: "AVAILABLE",
+  },
+  {
+    experienceYears: 8,
+    bio: "Fictional demo representative with broad field experience in Kochi, Thrissur, and Ernakulam. Currently balancing an established pharmacy network with scheduled territory visits across pediatrics and general medicine.",
+    languages: ["Malayalam", "English", "Tamil"],
+    specializations: ["Pediatrics", "General Medicine"],
+    territories: ["Kochi, Kerala", "Thrissur, Kerala", "Ernakulam, Kerala"],
+    companiesRepresented: "Cedar Health Labs",
+    workMode: "FIELD",
+    isIndependent: false,
+    availabilityStatus: "BUSY",
+  },
+  {
+    experienceYears: 10,
+    bio: "Fictional independent demo representative covering Lucknow, Kanpur, and nearby Uttar Pradesh districts. Brings ten years of compliant field experience across neurology and dermatology, with flexible multi-company engagement.",
+    languages: ["Hindi", "English", "Urdu"],
+    specializations: ["Neurology", "Dermatology"],
+    territories: ["Lucknow, Uttar Pradesh", "Kanpur, Uttar Pradesh", "Barabanki, Uttar Pradesh"],
+    companiesRepresented: "Independent · multi-company portfolio",
+    workMode: "HYBRID",
+    isIndependent: true,
+    availabilityStatus: "AVAILABLE",
+  },
+];
 
 function emailFor(role, index) {
   return `demo.${role.toLowerCase()}.${String(index + 1).padStart(2, "0")}@pharmx.dev`;
@@ -158,18 +215,11 @@ async function seedDemoData() {
             verificationDate: new Date(),
           });
         } else if (role === "MR") {
+          const details = MR_DEMO_DETAILS[index];
           profile = await upsert(MRProfile, { userId: user._id }, {
             userId: user._id,
             fullName: name,
-            experienceYears: 2 + index * 2,
-            bio: `Fictional demo medical representative covering ${region.state}, focused on compliant ${category.toLowerCase()} information.`,
-            languages: ["English", "Hindi"],
-            specializations: [category],
-            territories: [`${region.city}, ${region.state}`, region.state],
-            companiesRepresented: ROLE_NAMES.PHARMA_COMPANY[index],
-            workMode: ["FIELD", "HYBRID", "REMOTE"][index % 3],
-            isIndependent: index === 4,
-            availabilityStatus: index === 3 ? "BUSY" : "AVAILABLE",
+            ...details,
           });
         } else if (role === "PHARMACY") {
           profile = await upsert(PharmacyProfile, { userId: user._id }, {
@@ -263,6 +313,18 @@ async function seedDemoData() {
         {
           userId: users.PHARMA_COMPANY[index]._id,
           docType: "BUSINESS_REG",
+          fileUrl: "/uploads/demo-verification-placeholder.txt",
+          status: "APPROVED",
+          reviewedBy: admin._id,
+          reviewedAt: new Date(),
+        }
+      );
+      await upsert(
+        VerificationDocument,
+        { userId: users.MR[index]._id, docType: "ID_PROOF" },
+        {
+          userId: users.MR[index]._id,
+          docType: "ID_PROOF",
           fileUrl: "/uploads/demo-verification-placeholder.txt",
           status: "APPROVED",
           reviewedBy: admin._id,

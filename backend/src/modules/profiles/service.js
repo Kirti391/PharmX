@@ -23,6 +23,7 @@ function serializeMR(p) {
     languages: p.languages,
     specializations: p.specializations,
     territories: p.territories,
+    companiesRepresented: p.companiesRepresented,
     workMode: p.workMode,
     isIndependent: p.isIndependent,
     availabilityStatus: p.availabilityStatus,

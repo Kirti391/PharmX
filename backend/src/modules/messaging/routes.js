@@ -11,6 +11,10 @@ const User = require("../../models/User");
 const { getDisplayProfile } = require("../profiles/service");
 const { createNotification } = require("../notifications/service");
 const { emitRealtime } = require("../../realtime/bus");
+const {
+  MESSAGE_EDIT_WINDOW_MS,
+  isWithinMessageEditWindow,
+} = require("./editWindow");
 
 const router = express.Router();
 router.use(requireAuth);
@@ -242,12 +246,34 @@ router.patch(
     if (message.deletedAt) {
       throw new ApiError(409, "MESSAGE_DELETED", "Deleted messages cannot be edited");
     }
+    if (!isWithinMessageEditWindow(message.createdAt)) {
+      throw new ApiError(
+        409,
+        "MESSAGE_EDIT_EXPIRED",
+        "Messages can only be edited within 2 minutes of sending"
+      );
+    }
 
-    message.body = parsed.data.body;
-    message.editedAt = new Date();
-    await message.save();
+    const editedMessage = await Message.findOneAndUpdate(
+      {
+        _id: message._id,
+        conversationId: conversation._id,
+        senderId: req.user.sub,
+        deletedAt: null,
+        createdAt: { $gt: new Date(Date.now() - MESSAGE_EDIT_WINDOW_MS) },
+      },
+      { $set: { body: parsed.data.body, editedAt: new Date() } },
+      { new: true, runValidators: true }
+    );
+    if (!editedMessage) {
+      throw new ApiError(
+        409,
+        "MESSAGE_EDIT_EXPIRED",
+        "Messages can only be edited within 2 minutes of sending"
+      );
+    }
 
-    const serialized = serializeMessage(message);
+    const serialized = serializeMessage(editedMessage);
     emitRealtime({
       type: "message:updated",
       userIds: participantIds,

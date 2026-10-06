@@ -778,7 +778,7 @@ export function AppShell({ children }) {
 
         <main
           className={[
-            `min-w-0 overflow-x-clip ${isAdminRoute ? "admin-main" : "bg-[#FCFAF8]"}`,
+            `min-w-0 overflow-x-clip ${isAdminRoute ? "admin-main" : "bg-[#F5F3F8]"}`,
             isConversationPage
               ? "h-[calc(100dvh-62px)] min-h-0 md:h-screen"
               : "min-h-screen",
