@@ -131,32 +131,8 @@ Tailwind v4 is configured CSS-first via `@theme` in `frontend/src/index.css` —
 
 ---
 
-## 4. Environment variables
 
-**backend/.env**:
-```
-MONGODB_URI=mongodb://localhost:27017/pharmx
-JWT_ACCESS_SECRET=dev_access_secret_change_me
-JWT_REFRESH_SECRET=dev_refresh_secret_change_me
-PORT=4000
-CORS_ORIGIN=http://localhost:5173
-NODE_ENV=development
-```
-Production-only variables (see `backend/src/config/env.js`):
-```
-UPLOAD_DIR=/data/uploads      # points uploaded files at a persistent volume
-PUBLIC_URL=https://your-backend-url   # makes uploaded-file URLs resolve correctly behind a proxy
-```
-
-**frontend/.env**:
-```
-VITE_API_URL=http://localhost:4000/api/v1
-VITE_SOCKET_URL=http://localhost:4000
-```
-
----
-
-## 5. How this was verified
+## 4. How this was verified
 
 MongoDB itself couldn't be provisioned in the sandbox this was built in (no path to MongoDB's
 binaries from that environment — the same category of restriction that affected an earlier
