@@ -156,11 +156,4 @@ requirement as `pharmacy1@pharmx.dev`, confirm `mr1@pharmx.dev` gets a live noti
 works, everything downstream almost certainly does too, since it exercises the database, the matching
 engine, and the realtime pipeline all at once.
 
----
 
-## 6. Production build
-
-```bash
-cd backend && npm start          # after npm install
-cd frontend && npm run build && npm run preview   # or serve dist/ with any static host
-```
