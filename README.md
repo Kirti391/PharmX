@@ -67,6 +67,7 @@ remote non-production database.
 
 ---
 
+
 ## 2. What's real vs. what's simplified
 
 **Fully implemented, same feature set as the original build:**
