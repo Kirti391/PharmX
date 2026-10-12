@@ -5,6 +5,7 @@ Pharma Companies ↔ Medical Representatives (MR/Independent) ↔ Stockists/Dist
 connected through discovery, smart matching, appointments with disruption handling, real-time
 messaging, and an admin verification workflow.
 
+
 This is a MERN rebuild of an earlier SQLite/Next.js version of the same product — same feature set,
 same data model, ported onto MongoDB + Mongoose on the backend and plain React (Vite) + React Router
 on the frontend. **No OTP/SMS verification step** — signup activates the account immediately, since
