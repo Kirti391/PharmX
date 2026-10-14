@@ -45,8 +45,6 @@ npm run dev        # http://localhost:5173
 ```
 
 
-
-
 Or sign up fresh from the landing page — since there's no OTP step, the account is usable immediately.
 Doctors and distributor/stockist accounts can register through the role selector. Administrator access
 is available at `/admin/login`; admin accounts are provisioned by an existing administrator or the
