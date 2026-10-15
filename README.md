@@ -13,6 +13,7 @@ OTP delivery would need a real SMS provider anyway (see `backend/src/modules/aut
 where that would plug in later if you want it).
 
 ```
+
 pharmx/
 ├── backend/    Express + Mongoose API, Socket.IO
 └── frontend/   React (Vite) + React Router + Tailwind v4
