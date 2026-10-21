@@ -1,5 +1,6 @@
 # PharmX — Pharma Ecosystem Platform (MERN Stack)
 
+
 A full-stack MERN (MongoDB, Express, React, Node) implementation of the pharma ecosystem platform:
 Pharma Companies ↔ Medical Representatives (MR/Independent) ↔ Stockists/Distributors ↔ Pharmacies,
 connected through discovery, smart matching, appointments with disruption handling, real-time
