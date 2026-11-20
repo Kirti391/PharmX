@@ -11,6 +11,20 @@ export const PRODUCT_CATEGORIES = [
   "Nutraceuticals",
 ];
 
+export const MR_SUPPORT_REQUEST_OPTIONS = [
+  { value: "PRODUCT_INFORMATION", label: "Product information" },
+  { value: "PHARMACY_VISIT", label: "Pharmacy visit or meeting" },
+  { value: "PRODUCT_PRESENTATION", label: "Product presentation" },
+  { value: "OTHER_SUPPORT", label: "Other professional support" },
+];
+
+export function getMRSupportRequestLabel(requestType) {
+  return (
+    MR_SUPPORT_REQUEST_OPTIONS.find((option) => option.value === requestType)
+      ?.label || "Professional support"
+  );
+}
+
 export const DISRUPTION_REASONS = [
   "WEATHER",
   "HEALTH",

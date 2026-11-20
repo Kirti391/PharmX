@@ -142,7 +142,7 @@ export default function VerificationPage() {
                 ))}
               </Select>
               <p className="mt-1 text-xs leading-5 text-[#6E6658]">
-                The authorization letter is reviewed by PharmX and matched to
+                The authorization letter is reviewed by PharmUnis and matched to
                 this company before your request can be approved.
               </p>
             </div>

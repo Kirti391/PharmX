@@ -38,6 +38,12 @@ export function WorkspaceSearch({
   onChange,
   onClear,
   resultCount = null,
+  placeholder = "Search requirements, suppliers or connections",
+  ariaLabel = "Search the pharmacy workspace",
+  quickLinks = [
+    { to: "/requirements", icon: ClipboardList, label: "My requirements" },
+    { to: "/messages", icon: MessageSquare, label: "My messages" },
+  ],
 }) {
   return (
     <div className="rounded-[18px] bg-[#F7F5FA] p-3 sm:p-3.5">
@@ -57,8 +63,8 @@ export function WorkspaceSearch({
             type="search"
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            placeholder="Search requirements, suppliers or connections"
-            aria-label="Search the pharmacy workspace"
+            placeholder={placeholder}
+            aria-label={ariaLabel}
             className="dashboard-search-input h-full min-w-0 flex-1 appearance-none bg-transparent font-body text-[12px] outline-none placeholder:text-[#A9A1B4] [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
             style={{ color: SURFACE.ink }}
           />
@@ -77,17 +83,9 @@ export function WorkspaceSearch({
         </div>
 
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-          <QuickLink
-            to="/requirements"
-            icon={ClipboardList}
-            label="My requirements"
-          />
-
-          <QuickLink
-            to="/messages"
-            icon={MessageSquare}
-            label="My messages"
-          />
+          {quickLinks.map((quickLink) => (
+            <QuickLink key={quickLink.to} {...quickLink} />
+          ))}
         </div>
 
         {value && resultCount !== null && (

@@ -10,8 +10,13 @@ import {
 
 import { http } from "../lib/api";
 import { Card, Button, Loader } from "../components/ui";
+import {
+  getMRSupportRequestLabel,
+  MR_SUPPORT_REQUEST_OPTIONS,
+  PRODUCT_CATEGORIES as THERAPEUTIC_AREAS,
+} from "../lib/constants";
 // import { PRODUCT_CATEGORIES } from "../common/constants";
-const PRODUCT_CATEGORIES = [
+const PROCUREMENT_CATEGORIES = [
   "TABLETS",
   "CAPSULES",
   "SYRUPS",
@@ -28,17 +33,17 @@ const URGENCY_OPTIONS = [
   {
     value: "LOW",
     label: "Low",
-    description: "No immediate requirement",
+    description: "No immediate need",
   },
   {
     value: "NORMAL",
     label: "Normal",
-    description: "Needed within the usual procurement cycle",
+    description: "Needed within the usual timeframe",
   },
   {
     value: "HIGH",
     label: "High",
-    description: "Priority procurement requirement",
+    description: "Priority request",
   },
 ];
 
@@ -96,6 +101,7 @@ export default function RequirementEditPage() {
   const [requirement, setRequirement] = useState(null);
 
   const [category, setCategory] = useState("");
+  const [requestType, setRequestType] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [urgency, setUrgency] = useState("NORMAL");
@@ -127,6 +133,7 @@ export default function RequirementEditPage() {
 
         setRequirement(data);
         setCategory(data.category || "");
+        setRequestType(data.requestType || "");
         setTitle(data.title || "");
         setDescription(data.description || "");
         setUrgency(data.urgency || "NORMAL");
@@ -170,7 +177,23 @@ export default function RequirementEditPage() {
     const cleanDescription = description.trim();
 
     if (!category) {
-      setError("Please select a product category.");
+      setError(
+        requirement?.targetRole === "MR"
+          ? "Please select a therapeutic area."
+          : "Please select a product category."
+      );
+      return;
+    }
+
+    if (
+      requirement?.targetRole === "MR" &&
+      (!THERAPEUTIC_AREAS.includes(category) || !requestType)
+    ) {
+      setError(
+        !THERAPEUTIC_AREAS.includes(category)
+          ? "Choose a therapeutic area to match this request with relevant Medical Representatives."
+          : "Please select the type of support you need."
+      );
       return;
     }
 
@@ -196,6 +219,7 @@ export default function RequirementEditPage() {
         title: cleanTitle,
         description: cleanDescription,
         urgency,
+        ...(requirement?.targetRole === "MR" ? { requestType } : {}),
       };
 
       const result = await http.patch(`/requirements/${id}`, payload);
@@ -270,6 +294,10 @@ export default function RequirementEditPage() {
     );
   }
 
+  const isMRSupportRequest = requirement.targetRole === "MR";
+  const categoryOptions = isMRSupportRequest
+    ? THERAPEUTIC_AREAS
+    : PROCUREMENT_CATEGORIES;
   const isClosed =
     requirement.status === "FULFILLED" ||
     requirement.status === "CLOSED";
@@ -293,11 +321,15 @@ export default function RequirementEditPage() {
 
           <div>
             <h1 className="font-['Cinzel'] text-2xl font-semibold text-[#2A1B3D] sm:text-3xl">
-              Edit Requirement
+              {isMRSupportRequest
+                ? "Edit MR Support Request"
+                : "Edit Requirement"}
             </h1>
 
             <p className="mt-1.5 font-['Fauna_One'] text-xs leading-6 text-[#6E6658]">
-              Update the procurement details of your requirement.
+              {isMRSupportRequest
+                ? "Update the therapeutic area and professional support needed. This request is not for ordering medicine stock."
+                : "Update the procurement details of your requirement."}
             </p>
           </div>
         </div>
@@ -312,7 +344,7 @@ export default function RequirementEditPage() {
           />
 
           <div>
-            <p className="font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D]">
+            <p className="font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]">
               Requirement is {requirement.status}
             </p>
 
@@ -330,16 +362,19 @@ export default function RequirementEditPage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="font-['Cinzel'] text-base font-semibold text-[#2A1B3D]">
-                  Requirement details
+                  {isMRSupportRequest
+                    ? "Support request details"
+                    : "Requirement details"}
                 </h2>
 
                 <p className="mt-1 text-xs text-[#8C8496]">
-                  Keep the information accurate so matching suppliers receive
-                  useful context.
+                  {isMRSupportRequest
+                    ? "Keep the information accurate so relevant Medical Representatives can respond."
+                    : "Keep the information accurate so matching suppliers receive useful context."}
                 </p>
               </div>
 
-              <span className="shrink-0 rounded-full bg-[#EFEBF9] px-3 py-1 font-['Unica_One'] text-xs uppercase tracking-wide text-purple">
+              <span className="shrink-0 rounded-full bg-[#EFEBF9] px-3 py-1 font-['Philosopher'] text-xs uppercase tracking-wide text-purple">
                 {requirement.status || "OPEN"}
               </span>
             </div>
@@ -350,9 +385,11 @@ export default function RequirementEditPage() {
             <div>
               <label
                 htmlFor="category"
-                className="mb-2 block font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D]"
+                className="mb-2 block font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]"
               >
-                Product category
+                {isMRSupportRequest
+                  ? "Therapeutic area"
+                  : "Product category"}
               </label>
 
               <select
@@ -362,9 +399,14 @@ export default function RequirementEditPage() {
                 disabled={saving}
                 className="w-full rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
+                {!categoryOptions.includes(category) && category && (
+                  <option value={category} disabled>
+                    Update legacy category: {category}
+                  </option>
+                )}
                 <option value="">Select category</option>
 
-                {PRODUCT_CATEGORIES?.map((item) => (
+                {categoryOptions.map((item) => (
                   <option key={item} value={item}>
                     {item}
                   </option>
@@ -372,13 +414,39 @@ export default function RequirementEditPage() {
               </select>
             </div>
 
+            {isMRSupportRequest && (
+              <div>
+                <label
+                  htmlFor="requestType"
+                  className="mb-2 block font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]"
+                >
+                  Type of support
+                </label>
+
+                <select
+                  id="requestType"
+                  value={requestType}
+                  onChange={(event) => setRequestType(event.target.value)}
+                  disabled={saving}
+                  className="w-full rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="">Select support type</option>
+                  {MR_SUPPORT_REQUEST_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {getMRSupportRequestLabel(option.value)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Title */}
             <div>
               <label
                 htmlFor="title"
-                className="mb-2 block font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D]"
+                className="mb-2 block font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]"
               >
-                Requirement title
+                {isMRSupportRequest ? "Request title" : "Requirement title"}
               </label>
 
               <input
@@ -395,9 +463,11 @@ export default function RequirementEditPage() {
             <div>
               <label
                 htmlFor="description"
-                className="mb-2 block font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D]"
+                className="mb-2 block font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]"
               >
-                Requirement description
+                {isMRSupportRequest
+                  ? "Support needed"
+                  : "Requirement description"}
               </label>
 
               <textarea
@@ -416,7 +486,7 @@ export default function RequirementEditPage() {
 
             {/* Urgency */}
             <div>
-              <label className="mb-3 block font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D]">
+              <label className="mb-3 block font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]">
                 Urgency
               </label>
 
@@ -438,7 +508,7 @@ export default function RequirementEditPage() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span
-                          className={`font-['Unica_One'] text-sm uppercase ${
+                          className={`font-['Philosopher'] text-sm uppercase ${
                             active
                               ? "text-[#D83F87]"
                               : "text-[#2A1B3D]"
@@ -465,10 +535,10 @@ export default function RequirementEditPage() {
             </div>
 
             {/* Products */}
-            <div>
+            {!isMRSupportRequest && <div>
               <label
                 htmlFor="products"
-                className="mb-2 block font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D]"
+                className="mb-2 block font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]"
               >
                 Products / molecules
                 <span className="ml-2 font-['Fauna_One'] text-[10px] normal-case tracking-normal text-[#A4B3B6]">
@@ -492,7 +562,7 @@ export default function RequirementEditPage() {
                 current PATCH request intentionally sends only fields your
                 backend supports.
               </p>
-            </div>
+            </div>}
 
             {/* Error */}
             {error && (
@@ -512,7 +582,7 @@ export default function RequirementEditPage() {
             <div className="flex flex-col-reverse gap-3 border-t border-[#E9E6EC] pt-6 sm:flex-row sm:justify-end">
               <Link
                 to={`/requirements/${id}`}
-                className={`inline-flex items-center justify-center rounded-full border border-[#E9E2EA] px-5 py-3 font-['Unica_One'] text-[10px] uppercase tracking-wide text-[#2A1B3D] transition hover:bg-[#FCFAF8] ${
+                className={`inline-flex items-center justify-center rounded-full border border-[#E9E2EA] px-5 py-3 font-['Philosopher'] text-[10px] uppercase tracking-wide text-[#2A1B3D] transition hover:bg-[#FCFAF8] ${
                   saving ? "pointer-events-none opacity-50" : ""
                 }`}
               >

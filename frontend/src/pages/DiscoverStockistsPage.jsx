@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Building2,
   CheckCircle2,
@@ -18,6 +18,7 @@ import {
 import {
   DiscoverTabs,
   ConnectButton,
+  DiscoveryAvatar,
 } from "../components/discovery";
 import { useAuthStore } from "../store/authStore";
 
@@ -59,6 +60,22 @@ function getTypeLabel(type) {
   return "Distributor / Stockist";
 }
 
+function fetchStockists(filters) {
+  const params = new URLSearchParams();
+
+  if (filters.territory.trim()) {
+    params.set("territory", filters.territory.trim());
+  }
+  if (filters.category.trim()) {
+    params.set("category", filters.category.trim());
+  }
+  if (filters.type) {
+    params.set("type", filters.type);
+  }
+
+  return http.get(`/discover/stockists?${params.toString()}`);
+}
+
 export default function DiscoverStockistsPage() {
   const user = useAuthStore((state) => state.user);
 
@@ -70,34 +87,12 @@ export default function DiscoverStockistsPage() {
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
-  async function load({ silent = false } = {}) {
-    if (silent) {
-      setRefreshing(true);
-    } else {
-      setItems(null);
-    }
-
-    setError("");
-
-    const params = new URLSearchParams();
-
-    if (territory.trim()) {
-      params.set("territory", territory.trim());
-    }
-
-    if (category.trim()) {
-      params.set("category", category.trim());
-    }
-
-    if (type) {
-      params.set("type", type);
-    }
+  const load = useCallback(async ({ silent = false, filters } = {}) => {
+    if (silent) setRefreshing(true);
+    const activeFilters = filters || { territory: "", category: "", type: "" };
 
     try {
-      const result = await http.get(
-        `/discover/stockists?${params.toString()}`
-      );
-
+      const result = await fetchStockists(activeFilters);
       setItems(Array.isArray(result) ? result : []);
     } catch (err) {
       setItems([]);
@@ -111,20 +106,47 @@ export default function DiscoverStockistsPage() {
     } finally {
       setRefreshing(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    load();
+    let mounted = true;
+    fetchStockists({ territory: "", category: "", type: "" })
+      .then((result) => {
+        if (mounted) setItems(Array.isArray(result) ? result : []);
+      })
+      .catch((requestError) => {
+        if (!mounted) return;
+        setItems([]);
+        setError(
+          apiErrorMessage(
+            requestError,
+            "Unable to load distributors and stockists right now."
+          )
+        );
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  function applyFilters() {
+    setError("");
+    load({
+      silent: true,
+      filters: { territory, category, type },
+    });
+  }
 
   function clearFilters() {
     setTerritory("");
     setCategory("");
     setType("");
-
-    setTimeout(() => {
-      load();
-    }, 0);
+    setError("");
+    load({
+      silent: true,
+      filters: { territory: "", category: "", type: "" },
+    });
   }
 
   /*
@@ -135,20 +157,14 @@ export default function DiscoverStockistsPage() {
    * Backend discovery endpoints should ALSO exclude the
    * authenticated user's own profile.
    */
-  const visibleItems = useMemo(() => {
-    if (!Array.isArray(items)) return [];
-
-    if (!user?.id) return items;
-
-    return items.filter((item) => {
-      const profileUserId = item?.userId;
-
-      return (
-        profileUserId &&
-        String(profileUserId) !== String(user.id)
-      );
-    });
-  }, [items, user?.id]);
+  const visibleItems = !Array.isArray(items)
+    ? []
+    : !user?.id
+      ? items
+      : items.filter(
+          (item) =>
+            item?.userId && String(item.userId) !== String(user.id)
+        );
 
   return (
     <div className="space-y-7">
@@ -185,7 +201,13 @@ export default function DiscoverStockistsPage() {
 
         <button
           type="button"
-          onClick={() => load({ silent: true })}
+          onClick={() => {
+            setError("");
+            load({
+              silent: true,
+              filters: { territory, category, type },
+            });
+          }}
           disabled={refreshing}
           className="inline-flex items-center justify-center gap-2 self-start rounded-full border bg-white px-4 py-2.5 text-xs font-medium transition hover:border-[#D83F87]/30 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
           style={{
@@ -328,7 +350,8 @@ export default function DiscoverStockistsPage() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => load()}
+              onClick={applyFilters}
+              disabled={refreshing}
               className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
               style={{ backgroundColor: COLORS.primary }}
             >
@@ -339,6 +362,7 @@ export default function DiscoverStockistsPage() {
               <button
                 type="button"
                 onClick={clearFilters}
+                disabled={refreshing}
                 className="rounded-xl border bg-white px-4 py-2.5 text-sm font-medium transition hover:bg-gray-50"
                 style={{
                   borderColor: COLORS.border,
@@ -428,15 +452,20 @@ export default function DiscoverStockistsPage() {
                     {/* Header */}
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 gap-3">
-                        <div
+                        <DiscoveryAvatar
+                          src={
+                            stockist.logoUrl ||
+                            stockist.profileImageUrl ||
+                            stockist.profileImage
+                          }
+                          initials={getInitials(name)}
+                          fit="contain"
                           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
                           style={{
                             backgroundColor: `${COLORS.purple}12`,
                             color: COLORS.purple,
                           }}
-                        >
-                          {getInitials(name)}
-                        </div>
+                        />
 
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -457,7 +486,7 @@ export default function DiscoverStockistsPage() {
                               {getTypeLabel(stockist.type)}
                             </span>
 
-                            {stockist.businessVerified && (
+                            {stockist.connectionEligible ? (
                               <span
                                 className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
                                 style={{
@@ -467,6 +496,10 @@ export default function DiscoverStockistsPage() {
                               >
                                 <CheckCircle2 size={11} />
                                 Verified
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-[#F0EDF1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#8C8496]">
+                                Verification required
                               </span>
                             )}
                           </div>
@@ -484,6 +517,10 @@ export default function DiscoverStockistsPage() {
                       {!isSelf && stockist.userId && (
                         <ConnectButton
                           recipientUserId={stockist.userId}
+                          recipientRole="DISTRIBUTOR_STOCKIST"
+                          recipientVerified={stockist.connectionEligible}
+                          requesterVerified={stockist.requesterConnectionEligible}
+                          connectionStatus={stockist.connectionStatus}
                         />
                       )}
                     </div>

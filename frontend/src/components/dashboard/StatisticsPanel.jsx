@@ -41,13 +41,123 @@ function formatCount(value) {
   return String(Math.trunc(number)).padStart(2, "0");
 }
 
-export function StatisticsPanel({ stats = {} }) {
-  const values = {
-    requirements: stats.openRequirements ?? 0,
-    connections: stats.connections ?? 0,
-    appointments: stats.upcomingAppointments ?? 0,
-    notifications: stats.unreadNotifications ?? 0,
-  };
+export function StatisticsPanel({
+  stats = {},
+  title = "Pharmacy statistics",
+  variant = "pharmacy",
+}) {
+  const isCompany = variant === "company";
+  const isDoctor = variant === "doctor";
+  const isStockist = variant === "stockist";
+  const tiles = isCompany
+    ? [
+        {
+          key: "opportunities",
+          label: "Open opportunities",
+          color: SURFACE.pink,
+          background: SURFACE.pinkSoft,
+        },
+        {
+          key: "authorizations",
+          label: "MR authorization requests",
+          color: SURFACE.purple,
+          background: SURFACE.purpleSoft,
+        },
+        {
+          key: "leads",
+          label: "Open leads",
+          color: SURFACE.coral,
+          background: SURFACE.coralSoft,
+        },
+        {
+          key: "followUps",
+          label: "Follow-ups due",
+          color: SURFACE.inkSoft,
+          background: SURFACE.sectionCanvas,
+        },
+      ]
+    : isStockist
+      ? [
+          {
+            key: "requirements",
+            label: "Open requirements",
+            color: SURFACE.pink,
+            background: SURFACE.pinkSoft,
+          },
+          {
+            key: "opportunities",
+            label: "Distribution opportunities",
+            color: SURFACE.purple,
+            background: SURFACE.purpleSoft,
+          },
+          {
+            key: "connections",
+            label: "Professional connections",
+            color: SURFACE.coral,
+            background: SURFACE.coralSoft,
+          },
+          {
+            key: "leads",
+            label: "Active leads",
+            color: SURFACE.inkSoft,
+            background: SURFACE.sectionCanvas,
+          },
+        ]
+    : isDoctor
+      ? [
+          {
+            key: "requests",
+            label: "Requests to review",
+            color: SURFACE.pink,
+            background: SURFACE.pinkSoft,
+          },
+          {
+            key: "appointments",
+            label: "Upcoming appointments",
+            color: SURFACE.purple,
+            background: SURFACE.purpleSoft,
+          },
+          {
+            key: "connections",
+            label: "Connections",
+            color: SURFACE.coral,
+            background: SURFACE.coralSoft,
+          },
+          {
+            key: "notifications",
+            label: "Unread updates",
+            color: SURFACE.inkSoft,
+            background: SURFACE.sectionCanvas,
+          },
+        ]
+      : TILES;
+  const values = isCompany
+    ? {
+        opportunities: stats.openOpportunities ?? 0,
+        authorizations: stats.pendingAuthorizations ?? 0,
+        leads: stats.openLeads ?? 0,
+        followUps: stats.dueFollowUps ?? 0,
+      }
+    : isStockist
+      ? {
+          requirements: stats.openRequirements ?? 0,
+          opportunities: stats.openOpportunities ?? 0,
+          connections: stats.connections ?? 0,
+          leads: stats.openLeads ?? 0,
+        }
+    : isDoctor
+      ? {
+          requests: stats.pendingAppointments ?? 0,
+          appointments: stats.upcomingAppointments ?? 0,
+          connections: stats.connections ?? 0,
+          notifications: stats.unreadNotifications ?? 0,
+        }
+      : {
+          requirements: stats.openRequirements ?? 0,
+          connections: stats.connections ?? 0,
+          appointments: stats.upcomingAppointments ?? 0,
+          notifications: stats.unreadNotifications ?? 0,
+        };
 
   return (
     <section
@@ -57,14 +167,14 @@ export function StatisticsPanel({ stats = {} }) {
       <PanelHeading
         eyebrow="Overview"
         eyebrowColor={SURFACE.purple}
-        title="Pharmacy statistics"
+        title={title}
       />
 
       <div
         className="mt-5 grid grid-cols-2 gap-2.5"
         style={{ borderColor: SURFACE.hairline }}
       >
-        {TILES.map((tile) => (
+        {tiles.map((tile) => (
           <div
             key={tile.key}
             className="group relative min-h-[112px] overflow-hidden rounded-[14px] border p-4 transition-colors duration-200 hover:bg-[#FCFAF8] sm:p-5"

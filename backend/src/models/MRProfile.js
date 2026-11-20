@@ -1,5 +1,10 @@
 const mongoose = require("mongoose");
-const { WORK_MODES, AVAILABILITY_STATUSES } = require("../common/constants");
+const {
+  WORK_MODES,
+  AVAILABILITY_STATUSES,
+  MR_SAFETY_PREFERENCES,
+  OPPORTUNITY_TYPES,
+} = require("../common/constants");
 
 const mrProfileSchema = new mongoose.Schema(
   {
@@ -17,6 +22,14 @@ const mrProfileSchema = new mongoose.Schema(
     workMode: { type: String, enum: WORK_MODES, default: "FIELD" },
     isIndependent: { type: Boolean, default: false },
     availabilityStatus: { type: String, enum: AVAILABILITY_STATUSES, default: "AVAILABLE" },
+    safetyPreferences: {
+      type: [{ type: String, enum: MR_SAFETY_PREFERENCES }],
+      default: [],
+    },
+    preferredOpportunityTypes: {
+      type: [{ type: String, enum: OPPORTUNITY_TYPES }],
+      default: [],
+    },
   },
   { timestamps: true }
 );

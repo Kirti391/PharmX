@@ -288,7 +288,7 @@ export default function ConversationPage() {
               {other?.name || "Professional contact"}
             </h1>
             <p className="mt-0.5 truncate text-xs" style={{ color: SURFACE.muted }}>
-              {other?.role?.replaceAll("_", " ") || "PharmX member"}
+              {other?.role?.replaceAll("_", " ") || "PharmUnis member"}
             </p>
           </div>
           <span className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-medium sm:inline-flex" style={{ backgroundColor: SURFACE.purpleSoft, color: SURFACE.purple }}>

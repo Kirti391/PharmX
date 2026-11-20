@@ -400,15 +400,6 @@ router.patch(
         "A closure reason is required for a terminal lead stage"
       );
     }
-    const dueAt = new Date(parsed.data.dueAt);
-    if (dueAt <= new Date()) {
-      return fail(
-        res,
-        400,
-        "VALIDATION_ERROR",
-        "Follow-up due date must be in the future"
-      );
-    }
     const result = await findAccessibleLead(req.user, req.params.id);
     if (!result.lead) {
       return fail(
@@ -519,6 +510,15 @@ router.post(
         400,
         "VALIDATION_ERROR",
         parsed.error.issues[0]?.message ?? "Invalid follow-up"
+      );
+    }
+    const dueAt = new Date(parsed.data.dueAt);
+    if (dueAt <= new Date()) {
+      return fail(
+        res,
+        400,
+        "VALIDATION_ERROR",
+        "Follow-up due date must be in the future"
       );
     }
     const result = await findAccessibleLead(req.user, req.params.id);

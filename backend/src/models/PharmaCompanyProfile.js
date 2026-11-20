@@ -18,6 +18,27 @@ const pharmaCompanyProfileSchema = new mongoose.Schema(
       maxlength: 150,
     },
 
+    brandName: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 150,
+    },
+
+    entityType: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 100,
+    },
+
+    yearEstablished: {
+      type: Number,
+      default: null,
+      min: 1800,
+      max: new Date().getFullYear(),
+    },
+
     logoUrl: {
       type: String,
       default: null,
@@ -51,6 +72,27 @@ const pharmaCompanyProfileSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+    },
+
+    supportEmail: {
+      type: String,
+      default: "",
+      trim: true,
+      lowercase: true,
+      maxlength: 254,
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Enter a valid support email"],
+    },
+
+    expansionTerritories: {
+      type: [String],
+      default: [],
+    },
+
+    drugLicenceNumber: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 100,
     },
 
     contactPersonName: {

@@ -255,13 +255,13 @@ export default function AppointmentDetailPage() {
           </h2>
           {reportSubmitted ? (
             <p className="text-sm leading-6 text-[#6E6658]">
-              Your report was sent to the PharmX moderation team.
+              Your report was sent to the PharmUnis moderation team.
             </p>
           ) : (
             <>
               <p className="mb-4 text-sm leading-6 text-[#6E6658]">
                 Report unsafe, fraudulent, or inappropriate behavior for
-                confidential review by PharmX administrators.
+                confidential review by PharmUnis administrators.
               </p>
               {!showReportForm ? (
                 <Button

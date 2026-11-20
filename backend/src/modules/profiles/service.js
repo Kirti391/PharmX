@@ -5,14 +5,14 @@ const PharmacyProfile = require("../../models/PharmacyProfile");
 const StockistProfile = require("../../models/StockistProfile");
 const DoctorProfile = require("../../models/DoctorProfile");
 const User = require("../../models/User");
-const VerificationDocument = require("../../models/VerificationDocument");
 const { normalizeRole } = require("../../common/constants");
+const { hasCurrentConnectionVerification } = require("../connections/verification");
 
 // ============================================================
 // MR
 // ============================================================
 
-function serializeMR(p) {
+function serializeMR(p, includePrivatePreferences = false) {
   return {
     id: p._id,
     userId: p.userId,
@@ -27,6 +27,12 @@ function serializeMR(p) {
     workMode: p.workMode,
     isIndependent: p.isIndependent,
     availabilityStatus: p.availabilityStatus,
+    ...(includePrivatePreferences
+      ? {
+          safetyPreferences: p.safetyPreferences || [],
+          preferredOpportunityTypes: p.preferredOpportunityTypes || [],
+        }
+      : {}),
     updatedAt: p.updatedAt,
   };
 }
@@ -38,7 +44,7 @@ async function getMRProfileByUserId(userId) {
     throw new ApiError(404, "NOT_FOUND", "MR profile not found");
   }
 
-  return serializeMR(p);
+  return serializeMR(p, true);
 }
 
 async function getMRProfileById(id) {
@@ -63,6 +69,8 @@ async function updateMRProfile(userId, patch) {
     "workMode",
     "isIndependent",
     "availabilityStatus",
+    "safetyPreferences",
+    "preferredOpportunityTypes",
   ];
   const safePatch = {};
   for (const field of allowedFields) {
@@ -84,7 +92,7 @@ async function updateMRProfile(userId, patch) {
     throw new ApiError(404, "NOT_FOUND", "MR profile not found");
   }
 
-  return serializeMR(p);
+  return serializeMR(p, true);
 }
 
 async function listMRs({ territory, specialization, workMode, excludeUserId }) {
@@ -108,28 +116,40 @@ async function listMRs({ territory, specialization, workMode, excludeUserId }) {
     };
   }
 
-  const [verifiedUsers, activeUsers] = await Promise.all([
-    VerificationDocument.distinct("userId", {
-      docType: "ID_PROOF",
-      status: "APPROVED",
-    }),
-    User.distinct("_id", { status: "ACTIVE" }),
-  ]);
-  const activeIds = new Set(
-    activeUsers.map((id) => id.toString())
-  );
+  const activeUsers = await User.distinct("_id", { status: "ACTIVE" });
   query.userId = {
-    $in: verifiedUsers.filter(
-      (id) =>
-        activeIds.has(id.toString()) &&
-        id.toString() !== String(excludeUserId || "")
+    $in: activeUsers.filter(
+      (id) => id.toString() !== String(excludeUserId || "")
     ),
   };
 
   const rows = await MRProfile.find(query)
     .sort({ updatedAt: -1 });
 
-  return rows.map(serializeMR);
+  return serializeConnectionProfiles(rows, serializeMR);
+}
+
+async function serializeConnectionProfiles(rows, serialize) {
+  const users = await User.find({
+    _id: { $in: rows.map((row) => row.userId) },
+    status: "ACTIVE",
+  }).select("_id role");
+  const usersById = new Map(
+    users.map((user) => [user._id.toString(), user])
+  );
+  const results = await Promise.all(
+    rows.map(async (row) => {
+      const user = usersById.get(row.userId.toString());
+      if (!user) return null;
+
+      return {
+        ...serialize(row),
+        connectionEligible: await hasCurrentConnectionVerification(user),
+      };
+    })
+  );
+
+  return results.filter(Boolean);
 }
 
 // ============================================================
@@ -142,18 +162,24 @@ function serializePharma(p, includePrivate = false) {
     userId: p.userId,
 
     companyName: p.companyName,
+    brandName: p.brandName,
+    entityType: p.entityType,
+    yearEstablished: p.yearEstablished,
     logoUrl: p.logoUrl,
     description: p.description,
 
     manufacturingLocation: p.manufacturingLocation,
     areasOfOperation: p.areasOfOperation,
     productCategories: p.productCategories,
+    expansionTerritories: p.expansionTerritories,
 
     website: p.website,
+    supportEmail: p.supportEmail,
     ...(includePrivate
       ? {
           contactPersonName: p.contactPersonName,
           contactPersonDesignation: p.contactPersonDesignation,
+          drugLicenceNumber: p.drugLicenceNumber,
         }
       : {}),
 
@@ -196,12 +222,18 @@ async function getPharmaProfileById(id) {
 async function updatePharmaProfile(userId, patch) {
   const allowedFields = [
     "companyName",
+    "brandName",
+    "entityType",
+    "yearEstablished",
     "logoUrl",
     "description",
     "manufacturingLocation",
     "areasOfOperation",
     "productCategories",
+    "expansionTerritories",
     "website",
+    "supportEmail",
+    "drugLicenceNumber",
     "contactPersonName",
     "contactPersonDesignation",
   ];
@@ -231,14 +263,11 @@ async function updatePharmaProfile(userId, patch) {
     );
   }
 
-  return serializePharma(p);
+  return serializePharma(p, true);
 }
 
 async function listPharmaCompanies({ territory, category, excludeUserId }) {
-  const query = {
-    businessVerified: true,
-    verificationStatus: "VERIFIED",
-  };
+  const query = {};
 
   if (territory) {
     query.areasOfOperation = {
@@ -254,33 +283,11 @@ async function listPharmaCompanies({ territory, category, excludeUserId }) {
     };
   }
 
-  const currentRegistrationUsers = await VerificationDocument.distinct(
-    "userId",
-    {
-      docType: "BUSINESS_REG",
-      status: "APPROVED",
-      $or: [{ expiryDate: null }, { expiryDate: { $gt: new Date() } }],
-    }
-  );
-  query.userId = {
-    $in: currentRegistrationUsers,
-    ...(excludeUserId ? { $ne: excludeUserId } : {}),
-  };
+  if (excludeUserId) query.userId = { $ne: excludeUserId };
 
   const rows = await PharmaCompanyProfile.find(query)
     .sort({ updatedAt: -1 });
-  const activeUsers = new Set(
-    (
-      await User.distinct("_id", {
-        _id: { $in: rows.map((row) => row.userId) },
-        status: "ACTIVE",
-      })
-    ).map((id) => id.toString())
-  );
-
-  return rows
-    .filter((row) => activeUsers.has(row.userId.toString()))
-    .map(serializePharma);
+  return serializeConnectionProfiles(rows, serializePharma);
 }
 
 // ============================================================
@@ -488,14 +495,11 @@ async function updatePharmacyProfile(userId, patch) {
     );
   }
 
-  return serializePharmacy(p);
+  return serializePharmacy(p, true);
 }
 
 async function listPharmacies({ territory, category, excludeUserId }) {
-  const query = {
-    businessVerified: true,
-    verificationStatus: "VERIFIED",
-  };
+  const query = {};
 
   if (excludeUserId) {
     query.userId = { $ne: excludeUserId };
@@ -517,23 +521,7 @@ async function listPharmacies({ territory, category, excludeUserId }) {
 
   const rows = await PharmacyProfile.find(query)
     .sort({ updatedAt: -1 });
-  const activeUsers = new Set(
-    (
-      await User.distinct("_id", {
-        _id: { $in: rows.map((row) => row.userId) },
-        status: "ACTIVE",
-      })
-    ).map((id) => id.toString())
-  );
-
-  const now = new Date();
-  return rows
-    .filter(
-      (row) =>
-        activeUsers.has(row.userId.toString()) &&
-        (!row.licenceExpiryDate || row.licenceExpiryDate > now)
-    )
-    .map(serializePharmacy);
+  return serializeConnectionProfiles(rows, serializePharmacy);
 }
 
 // ============================================================
@@ -546,13 +534,37 @@ function serializeStockist(p) {
     userId: p.userId,
     companyName: p.companyName,
     type: p.type,
+    logoUrl: p.logoUrl,
+    description: p.description,
+    location: p.location,
+    website: p.website,
+    contactPersonName: p.contactPersonName,
+    contactPersonDesignation: p.contactPersonDesignation,
+    deliveryModes: p.deliveryModes,
+    minimumOrderValue: p.minimumOrderValue,
+    pinCodes: p.pinCodes,
+    deliveryTimeHours: p.deliveryTimeHours,
+    deliveryWindow: p.deliveryWindow,
+    minimumOrderBand: p.minimumOrderBand,
+    coldChain: p.coldChain,
+    storageCapacity: p.storageCapacity,
+    specialHandling: p.specialHandling,
+    emergencySupply: p.emergencySupply,
+    returnPolicySummary: p.returnPolicySummary,
+    serviceStatus: p.serviceStatus,
+    serviceDescription: p.serviceDescription,
     serviceAreas: p.serviceAreas,
     productCategories: p.productCategories,
     associatedCompanies: p.associatedCompanies,
     businessVerified: p.businessVerified,
+    verificationStatus: p.verificationStatus,
     licenceExpiryDate: p.licenceExpiryDate,
     updatedAt: p.updatedAt,
   };
+}
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function getStockistProfileByUserId(userId) {
@@ -587,6 +599,25 @@ async function updateStockistProfile(userId, patch) {
   const allowedFields = [
     "companyName",
     "type",
+    "logoUrl",
+    "description",
+    "location",
+    "website",
+    "contactPersonName",
+    "contactPersonDesignation",
+    "deliveryModes",
+    "minimumOrderValue",
+    "pinCodes",
+    "deliveryTimeHours",
+    "deliveryWindow",
+    "minimumOrderBand",
+    "coldChain",
+    "storageCapacity",
+    "specialHandling",
+    "emergencySupply",
+    "returnPolicySummary",
+    "serviceStatus",
+    "serviceDescription",
     "serviceAreas",
     "productCategories",
     "associatedCompanies",
@@ -618,7 +649,7 @@ async function updateStockistProfile(userId, patch) {
 }
 
 async function listStockists({ territory, category, type, excludeUserId }) {
-  const query = { businessVerified: true };
+  const query = {};
 
   if (excludeUserId) {
     query.userId = { $ne: excludeUserId };
@@ -630,37 +661,19 @@ async function listStockists({ territory, category, type, excludeUserId }) {
 
   if (territory) {
     query.serviceAreas = {
-      $regex: territory,
-      $options: "i",
+      $elemMatch: { $regex: escapeRegex(territory.trim()), $options: "i" },
     };
   }
 
   if (category) {
     query.productCategories = {
-      $regex: category,
-      $options: "i",
+      $elemMatch: { $regex: escapeRegex(category.trim()), $options: "i" },
     };
   }
 
   const rows = await StockistProfile.find(query)
     .sort({ updatedAt: -1 });
-  const activeUsers = new Set(
-    (
-      await User.distinct("_id", {
-        _id: { $in: rows.map((row) => row.userId) },
-        status: "ACTIVE",
-      })
-    ).map((id) => id.toString())
-  );
-
-  const now = new Date();
-  return rows
-    .filter(
-      (row) =>
-        activeUsers.has(row.userId.toString()) &&
-        (!row.licenceExpiryDate || row.licenceExpiryDate > now)
-    )
-    .map(serializeStockist);
+  return serializeConnectionProfiles(rows, serializeStockist);
 }
 
 // ============================================================
@@ -720,6 +733,7 @@ async function updateDoctorProfile(userId, patch) {
 
   const allowedFields = [
     "fullName",
+    "profileImageUrl",
     "specialty",
     "subspecialty",
     "qualification",
@@ -754,7 +768,7 @@ async function updateDoctorProfile(userId, patch) {
     throw new ApiError(
       409,
       "REGISTRATION_CHANGE_REQUIRES_REVIEW",
-      "Registration details cannot be changed while verification is pending or approved. Contact PharmX support for a correction."
+      "Registration details cannot be changed while verification is pending or approved. Contact PharmUnis support for a correction."
     );
   }
 
@@ -822,7 +836,11 @@ async function getDisplayProfile(userId, role) {
     };
   }
 
-  if (role === "DISTRIBUTOR_STOCKIST") {
+  if (
+    role === "DISTRIBUTOR_STOCKIST" ||
+    role === "DISTRIBUTOR" ||
+    role === "STOCKIST"
+  ) {
     const p = await getStockistProfileByUserId(userId);
 
     return {

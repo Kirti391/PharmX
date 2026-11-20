@@ -139,7 +139,14 @@ router.post(
   "/reset-password",
   asyncHandler(async (req, res) => {
     const parsed = resetPasswordSchema.safeParse(req.body);
-    if (!parsed.success) return fail(res, 400, "VALIDATION_ERROR", "resetToken and newPassword are required");
+    if (!parsed.success) {
+      return fail(
+        res,
+        400,
+        "VALIDATION_ERROR",
+        parsed.error.issues[0]?.message ?? "resetToken and newPassword are required"
+      );
+    }
     await authService.resetPassword(parsed.data.resetToken, parsed.data.newPassword);
     ok(res, { done: true });
   })

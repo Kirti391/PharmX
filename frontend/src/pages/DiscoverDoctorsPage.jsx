@@ -5,6 +5,7 @@ import { BadgeCheck, CalendarClock, MapPin, Video } from "lucide-react";
 import { apiErrorMessage, http } from "../lib/api";
 import { PRODUCT_CATEGORIES } from "../lib/constants";
 import { Card, Input, Loader, Select } from "../components/ui";
+import { DiscoveryAvatar } from "../components/discovery";
 
 export default function DiscoverDoctorsPage() {
   const [doctors, setDoctors] = useState(null);
@@ -111,6 +112,16 @@ export default function DiscoverDoctorsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {visibleDoctors.map((doctor) => {
+            const name = doctor.fullName || "Doctor";
+            const initials =
+              name
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((part) => part[0])
+                .join("")
+                .toUpperCase() || "DR";
             const purposeCategory =
               category ||
               doctor.acceptedCategories?.[0] ||
@@ -123,20 +134,27 @@ export default function DiscoverDoctorsPage() {
             return (
               <Card key={doctor.id} className="flex flex-col transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(42,27,61,0.08)]">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-display text-lg font-semibold text-navy">
-                      {doctor.fullName}
-                    </h2>
-                    <p className="mt-1 font-body text-sm text-[#6E6658]">
-                      {[doctor.specialty, doctor.subspecialty]
-                        .filter(Boolean)
-                        .join(" · ") || "Registered medical practitioner"}
-                    </p>
-                    {doctor.companyName && (
-                      <p className="mt-2 font-body text-xs font-medium text-purple">
-                        Authorized company: {doctor.companyName}
+                  <div className="flex min-w-0 items-start gap-3">
+                    <DiscoveryAvatar
+                      src={doctor.profileImageUrl}
+                      initials={initials}
+                      className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#44318D]/10 text-sm font-bold text-purple"
+                    />
+                    <div className="min-w-0">
+                      <h2 className="font-display text-lg font-semibold text-navy">
+                        {name}
+                      </h2>
+                      <p className="mt-1 font-body text-sm text-[#6E6658]">
+                        {[doctor.specialty, doctor.subspecialty]
+                          .filter(Boolean)
+                          .join(" · ") || "Registered medical practitioner"}
                       </p>
-                    )}
+                      {doctor.companyName && (
+                        <p className="mt-2 font-body text-xs font-medium text-purple">
+                          Authorized company: {doctor.companyName}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#EDF6F0] px-2.5 py-1 font-nav text-[9px] uppercase tracking-wider text-[#32734D]">
                     <BadgeCheck size={12} />

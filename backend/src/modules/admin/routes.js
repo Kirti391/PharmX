@@ -20,12 +20,15 @@ const { recordAudit } = require("../../common/audit");
 const { createNotification } = require("../notifications/service");
 const { getDisplayProfile } = require("../profiles/service");
 const { DOC_TYPES, PRODUCT_CATEGORIES, ROLES } = require("../../common/constants");
+const { hasCurrentCompanyRegistration } = require("../authorizations/verification");
 
 async function refreshBusinessVerification(userId, role) {
   const requiredByRole = {
     PHARMA_COMPANY: ["BUSINESS_REG"],
     PHARMACY: ["DRUG_LICENSE"],
     DISTRIBUTOR_STOCKIST: ["DRUG_LICENSE"],
+    DISTRIBUTOR: ["DRUG_LICENSE"],
+    STOCKIST: ["DRUG_LICENSE"],
   };
   const requiredDocuments = requiredByRole[role];
   if (!requiredDocuments) return;
@@ -98,6 +101,7 @@ async function refreshBusinessVerification(userId, role) {
       {
         $set: {
           businessVerified: verified,
+          verificationStatus,
           licenceExpiryDate: currentLicence?.expiryDate || null,
         },
       }
@@ -512,8 +516,23 @@ router.patch(
 router.get(
   "/authorizations",
   asyncHandler(async (req, res) => {
-    const status = req.query.status || "PENDING";
-    const rows = await CompanyAuthorization.find({ status }).sort({
+    const status = String(req.query.status || "PENDING").toUpperCase();
+    const now = new Date();
+    const query =
+      status === "EXPIRED"
+        ? {
+            $or: [
+              { status: "EXPIRED" },
+              {
+                status: { $in: ["PENDING", "ACTIVE"] },
+                expiresAt: { $lte: now },
+              },
+            ],
+          }
+        : ["PENDING", "ACTIVE"].includes(status)
+          ? { status, expiresAt: { $gt: now } }
+          : { status };
+    const rows = await CompanyAuthorization.find(query).sort({
       createdAt: -1,
     });
     ok(
@@ -539,7 +558,11 @@ router.get(
             categories: authorization.categories,
             territories: authorization.territories,
             expiresAt: authorization.expiresAt,
-            status: authorization.status,
+            status:
+              ["PENDING", "ACTIVE"].includes(authorization.status) &&
+              authorization.expiresAt <= now
+                ? "EXPIRED"
+                : authorization.status,
             createdAt: authorization.createdAt,
           };
         })
@@ -568,14 +591,42 @@ router.patch(
         "Only unexpired pending authorizations can be approved"
       );
     }
+
+    const now = new Date();
+    const company = await PharmaCompanyProfile.findOne({
+      _id: authorization.companyId,
+      businessVerified: true,
+      verificationStatus: "VERIFIED",
+    }).select("_id userId");
+    if (!company) {
+      return fail(
+        res,
+        409,
+        "COMPANY_VERIFICATION_REQUIRED",
+        "The company must remain verified before this authorization can be activated"
+      );
+    }
+    if (!(await hasCurrentCompanyRegistration(company, now))) {
+      return fail(
+        res,
+        409,
+        "COMPANY_LICENSE_EXPIRED",
+        "A current approved company registration is required"
+      );
+    }
+
     const document = await VerificationDocument.findOne({
       _id: authorization.verificationDocumentId,
       userId: authorization.mrUserId,
       companyId: authorization.companyId,
       docType: "COMPANY_AUTHORIZATION",
       status: "APPROVED",
+      $or: [{ expiryDate: null }, { expiryDate: { $gt: now } }],
     });
-    if (!document) {
+    if (
+      !document ||
+      (document.expiryDate && authorization.expiresAt > document.expiryDate)
+    ) {
       return fail(
         res,
         409,
@@ -584,27 +635,48 @@ router.patch(
       );
     }
 
-    authorization.status = "ACTIVE";
-    authorization.reviewedBy = req.user.sub;
-    authorization.reviewedAt = new Date();
-    await authorization.save();
+    const reviewedAt = new Date();
+    const activatedAuthorization =
+      await CompanyAuthorization.findOneAndUpdate(
+        {
+          _id: authorization._id,
+          status: "PENDING",
+          expiresAt: { $gt: reviewedAt },
+        },
+        {
+          $set: {
+            status: "ACTIVE",
+            reviewedBy: req.user.sub,
+            reviewedAt,
+          },
+        },
+        { new: true }
+      );
+    if (!activatedAuthorization) {
+      return fail(
+        res,
+        409,
+        "AUTHORIZATION_NOT_REVIEWABLE",
+        "The authorization was already reviewed or has expired"
+      );
+    }
     await recordAudit({
       userId: req.user.sub,
       action: "ADMIN_APPROVED_COMPANY_AUTHORIZATION",
       targetType: "CompanyAuthorization",
-      targetId: authorization._id.toString(),
+      targetId: activatedAuthorization._id.toString(),
     });
     await createNotification({
       userId: authorization.mrUserId,
       type: "VERIFICATION_UPDATE",
       title: "Company authorization approved",
       body: "Your company representation authorization is now active.",
-      data: { authorizationId: authorization._id },
+      data: { authorizationId: activatedAuthorization._id },
     });
     ok(res, {
-      id: authorization._id,
-      status: authorization.status,
-      reviewedAt: authorization.reviewedAt,
+      id: activatedAuthorization._id,
+      status: activatedAuthorization.status,
+      reviewedAt: activatedAuthorization.reviewedAt,
     });
   })
 );

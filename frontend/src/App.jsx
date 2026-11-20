@@ -183,6 +183,15 @@ export default function App() {
       />
 
       <Route
+        path="/opportunities/:id/edit"
+        element={
+          <Protected>
+            <OpportunityCreatePage />
+          </Protected>
+        }
+      />
+
+      <Route
         path="/opportunities/:id"
         element={
           <Protected>

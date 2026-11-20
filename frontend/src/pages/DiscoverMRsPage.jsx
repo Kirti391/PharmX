@@ -20,6 +20,7 @@ import {
 import {
   DiscoverTabs,
   ConnectButton,
+  DiscoveryAvatar,
 } from "../components/discovery";
 import { useAuthStore } from "../store/authStore";
 
@@ -440,15 +441,15 @@ export default function DiscoverMRsPage() {
                     {/* Profile header */}
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 gap-3">
-                        <div
+                        <DiscoveryAvatar
+                          src={mr.profileImageUrl}
+                          initials={getInitials(name)}
                           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
                           style={{
                             backgroundColor: `${COLORS.purple}12`,
                             color: COLORS.purple,
                           }}
-                        >
-                          {getInitials(name)}
-                        </div>
+                        />
 
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -470,6 +471,17 @@ export default function DiscoverMRsPage() {
                                 Independent
                               </span>
                             )}
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                                mr.connectionEligible
+                                  ? "bg-[#D83F87]/10 text-[#D83F87]"
+                                  : "bg-[#F0EDF1] text-[#8C8496]"
+                              }`}
+                            >
+                              {mr.connectionEligible
+                                ? "Verified"
+                                : "Verification required"}
+                            </span>
                           </div>
 
                           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
@@ -517,6 +529,10 @@ export default function DiscoverMRsPage() {
                       {!isSelf && mr.userId && (
                         <ConnectButton
                           recipientUserId={mr.userId}
+                          recipientRole="MR"
+                          recipientVerified={mr.connectionEligible}
+                          requesterVerified={mr.requesterConnectionEligible}
+                          connectionStatus={mr.connectionStatus}
                         />
                       )}
                     </div>

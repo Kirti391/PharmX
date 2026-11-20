@@ -29,10 +29,11 @@ export const Button = forwardRef(
 );
 Button.displayName = "Button";
 
-export function Card({ className = "", children }) {
+export function Card({ className = "", children, style }) {
   return (
     <div
       className={`rounded-[20px] border border-[#E9E2EA] bg-white p-5 shadow-[0_8px_26px_rgba(42,27,61,0.045)] ${className}`}
+      style={style}
     >
       {children}
     </div>

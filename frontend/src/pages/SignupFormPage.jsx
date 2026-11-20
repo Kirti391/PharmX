@@ -116,12 +116,12 @@ export default function SignupFormPage() {
   }
 
   return (
-   <main className="min-h-screen bg-[#F7F5FA] lg:h-screen lg:overflow-hidden lg:grid lg:grid-cols-[1fr_0.9fr]">
+   <main className="min-h-screen bg-[#F7F5FA] lg:min-h-screen lg:grid lg:grid-cols-[1fr_0.9fr]">
 
       {/* =====================================================
           LEFT — SIGNUP
       ====================================================== */}
-      <section className="h-screen flex flex-col bg-[#F7F5FA]">
+      <section className="min-h-screen flex flex-col bg-[#F7F5FA]">
 
         {/* Header */}
         <header className="flex items-center justify-between px-7 sm:px-10 lg:px-12 py-6 shrink-0">
@@ -183,7 +183,7 @@ export default function SignupFormPage() {
               <div>
                 <p
                   className="text-[8px] uppercase tracking-[0.2em] text-[#A4B3B6]"
-                  style={{ fontFamily: "Unica One" }}
+                  style={{ fontFamily: "Philosopher" }}
                 >
                   Registering as
                 </p>
@@ -296,12 +296,19 @@ export default function SignupFormPage() {
                   name="password"
                   type="password"
                   required
+                  minLength={8}
+                  maxLength={72}
+                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])[!-~]{8,72}"
+                  title="Use 8–72 characters with uppercase and lowercase letters, a number, and a special character."
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 8 characters"
+                  placeholder="Enter password"
                   className="mt-0.5 h-9 rounded-none border-0 border-b border-[#A4B3B6]/50 bg-transparent px-0 text-sm text-[#2A1B3D] placeholder:text-[#A4B3B6] shadow-none focus:border-[#D83F87] focus:ring-0"
                 />
+                <p className="mt-1 text-[10px] text-[#8C8496]">
+                  8–72 characters; include uppercase and lowercase letters, a number, and a special character.
+                </p>
               </div>
 
               {/* Location */}
@@ -381,7 +388,7 @@ export default function SignupFormPage() {
 
             {/* Footer */}
             <p
-              className="text-center text-[11px] text-[#A4B3B6] mt-4"
+              className="text-center text-[11px] text-[#A4B3B6] mt-4 pb-6"
               style={{ fontFamily: "Fauna One" }}
             >
               Already have an account?{" "}
@@ -399,7 +406,7 @@ export default function SignupFormPage() {
       {/* =====================================================
           RIGHT — DECORATIVE
       ====================================================== */}
-      <section className="relative hidden lg:block h-screen overflow-hidden bg-[#2A1B3D]">
+      <section className="relative hidden lg:block min-h-screen overflow-hidden bg-[#2A1B3D]">
 
         {/* Purple circle */}
         <div
@@ -464,7 +471,7 @@ export default function SignupFormPage() {
 
           <span
             className="text-[9px] uppercase tracking-[0.25em] text-[#F7F5FA]/80"
-            style={{ fontFamily: "Unica One" }}
+            style={{ fontFamily: "Philosopher" }}
           >
             PHARMUNIS
           </span>
@@ -502,7 +509,7 @@ export default function SignupFormPage() {
           <div className="flex items-center justify-between">
             <span
               className="text-[9px] uppercase tracking-[0.16em] text-[#F7F5FA]/70"
-              style={{ fontFamily: "Unica One" }}
+              style={{ fontFamily: "Philosopher" }}
             >
               Professional · Verified · Connected
             </span>

@@ -1,4 +1,4 @@
-# PharmX — Pharma Ecosystem Platform (MERN Stack)
+# PharmUnis — Pharma Ecosystem Platform (MERN Stack)
 
 
 A full-stack MERN (MongoDB, Express, React, Node) implementation of the pharma ecosystem platform:
@@ -63,7 +63,7 @@ For a larger test network, run `npm run seed:demo` from `backend/`. This additiv
 five fictional accounts for each role, complete role profiles, pharmacy requirements, accepted
 connections, doctor appointment requests and confirmed appointments, and messaging conversations.
 It is idempotent and does not delete existing records. All demo accounts use
-`PharmXDemo!2026`; their emails follow `demo.<role>.<number>@pharmx.dev` (for example,
+`PharmUnisDemo!2026`; their emails follow `demo.<role>.<number>@pharmx.dev` (for example,
 `demo.doctor.01@pharmx.dev`). The seed only runs outside production and only against local
 MongoDB by default. Setting `PHARMX_ALLOW_REMOTE_DEMO_SEED=true` explicitly permits a dedicated
 remote non-production database.

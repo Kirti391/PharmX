@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, BadgeCheck, MapPin } from "lucide-react";
 
@@ -9,7 +10,9 @@ export function PharmacyProfileCard({
   name,
   verified = false,
 }) {
+  const [failedImageUrl, setFailedImageUrl] = useState(null);
   const location = pharmacyLocation(profile);
+  const profileImage = profile?.profileImage;
 
   return (
     <section
@@ -31,7 +34,16 @@ export function PharmacyProfileCard({
             background: `linear-gradient(145deg, ${SURFACE.pink} 0%, ${SURFACE.purple} 100%)`,
           }}
         >
-          {initials(name)}
+          {profileImage && profileImage !== failedImageUrl ? (
+            <img
+              src={profileImage}
+              alt=""
+              className="h-full w-full rounded-[17px] object-cover"
+              onError={() => setFailedImageUrl(profileImage)}
+            />
+          ) : (
+            initials(name)
+          )}
         </span>
 
         <div className="min-w-0">

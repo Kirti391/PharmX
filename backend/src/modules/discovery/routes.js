@@ -1,5 +1,6 @@
 const express = require("express");
 const DoctorProfile = require("../../models/DoctorProfile");
+const Connection = require("../../models/Connection");
 const MRProfile = require("../../models/MRProfile");
 const PharmaCompanyProfile = require("../../models/PharmaCompanyProfile");
 const CompanyAuthorization = require("../../models/CompanyAuthorization");
@@ -12,6 +13,10 @@ const {
   requireRole,
 } = require("../../common/middleware");
 const { ok } = require("../../common/http");
+const { getConnectionStatuses } = require("../connections/status");
+const {
+  hasCurrentConnectionVerification,
+} = require("../connections/verification");
 
 const {
   listMRs,
@@ -24,17 +29,48 @@ const router = express.Router();
 
 router.use(requireAuth);
 
+async function addRequesterConnectionEligibility(profiles, userId) {
+  const requester = await User.findById(userId).select("_id role");
+  const recipientIds = profiles
+    .map((profile) => profile.userId)
+    .filter(Boolean);
+  const [requesterCanConnect, connections] = await Promise.all([
+    requester ? hasCurrentConnectionVerification(requester) : false,
+    recipientIds.length
+      ? Connection.find({
+          $or: [
+            { requesterId: userId, recipientId: { $in: recipientIds } },
+            { recipientId: userId, requesterId: { $in: recipientIds } },
+          ],
+        })
+          .sort({ createdAt: -1 })
+          .select("requesterId recipientId status")
+      : [],
+  ]);
+  const connectionStatuses = getConnectionStatuses(connections, userId);
+
+  return profiles.map((profile) => ({
+    ...profile,
+    requesterConnectionEligible: requesterCanConnect,
+    connectionStatus:
+      connectionStatuses.get(String(profile.userId)) || null,
+  }));
+}
+
 router.get(
   "/companies",
   requireRole("PHARMACY", "MR", "DISTRIBUTOR_STOCKIST"),
   asyncHandler(async (req, res) => {
     ok(
       res,
-      await listPharmaCompanies({
-        territory: req.query.territory,
-        category: req.query.category,
-        excludeUserId: req.user?.sub,
-      })
+      await addRequesterConnectionEligibility(
+        await listPharmaCompanies({
+          territory: req.query.territory,
+          category: req.query.category,
+          excludeUserId: req.user.sub,
+        }),
+        req.user.sub
+      )
     );
   })
 );
@@ -45,12 +81,15 @@ router.get(
   asyncHandler(async (req, res) => {
     ok(
       res,
-      await listMRs({
-        territory: req.query.territory,
-        specialization: req.query.specialization,
-        workMode: req.query.workMode,
-        excludeUserId: req.user?.sub,
-      })
+      await addRequesterConnectionEligibility(
+        await listMRs({
+          territory: req.query.territory,
+          specialization: req.query.specialization,
+          workMode: req.query.workMode,
+          excludeUserId: req.user.sub,
+        }),
+        req.user.sub
+      )
     );
   })
 );
@@ -61,11 +100,14 @@ router.get(
   asyncHandler(async (req, res) => {
     ok(
       res,
-      await listPharmacies({
-        territory: req.query.territory,
-        category: req.query.category,
-        excludeUserId: req.user?.sub,
-      })
+      await addRequesterConnectionEligibility(
+        await listPharmacies({
+          territory: req.query.territory,
+          category: req.query.category,
+          excludeUserId: req.user.sub,
+        }),
+        req.user.sub
+      )
     );
   })
 );
@@ -76,12 +118,15 @@ router.get(
   asyncHandler(async (req, res) => {
     ok(
       res,
-      await listStockists({
-        territory: req.query.territory,
-        category: req.query.category,
-        type: req.query.type,
-        excludeUserId: req.user?.sub,
-      })
+      await addRequesterConnectionEligibility(
+        await listStockists({
+          territory: req.query.territory,
+          category: req.query.category,
+          type: req.query.type,
+          excludeUserId: req.user.sub,
+        }),
+        req.user.sub
+      )
     );
   })
 );

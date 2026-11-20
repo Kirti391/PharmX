@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const {
   REQUIREMENT_STATUSES,
+  MR_SUPPORT_REQUEST_TYPES,
   URGENCY_LEVELS,
 } = require("../common/constants");
 
@@ -37,6 +38,11 @@ const requirementSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    requestType: {
+      type: String,
+      enum: MR_SUPPORT_REQUEST_TYPES,
+      default: null,
+    },
     category: {
       type: String,
       required: true,
@@ -62,6 +68,15 @@ const requirementSchema = new mongoose.Schema(
       enum: REQUIREMENT_STATUSES,
       default: "OPEN",
       index: true,
+    },
+    matchingCount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    fulfilledAt: {
+      type: Date,
+      default: null,
     },
   },
   {

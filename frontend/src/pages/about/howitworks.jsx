@@ -234,7 +234,7 @@ const HowItWorks = () => {
                 >
                   <span
                     className="
-                      font-['Unica_One']
+                      font-['Philosopher']
                       text-base
                       md:text-sm
                       font-semibold
@@ -247,7 +247,7 @@ const HowItWorks = () => {
 
                   <span
                     className="
-                      font-['Unica_One']
+                      font-['Philosopher']
                       uppercase
                       tracking-[1.5px]
                       text-[#2A1B3D]
@@ -297,7 +297,7 @@ const HowItWorks = () => {
                 >
                   <span
                     className="
-                      font-['Unica_One']
+                      font-['Philosopher']
                       text-xs
                       tracking-[3px]
                       text-[#D83F87]

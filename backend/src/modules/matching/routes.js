@@ -210,6 +210,9 @@ router.get(
       requirement._id
     );
 
+    requirement.matchingCount = matches.length;
+    await requirement.save();
+
     return ok(res, matches);
   })
 );

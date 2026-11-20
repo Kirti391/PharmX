@@ -13,7 +13,12 @@ import {
    most recently created requirements.
 ========================================================= */
 
-export function ProcurementPanel({ items = [] }) {
+export function ProcurementPanel({
+  items = [],
+  title = "Today's procurement",
+  actionHref = "/requirements",
+  emptyMessage = "Nothing is scheduled or posted yet today. New supplier activity will appear here.",
+}) {
   return (
     <section
       className="min-w-0 rounded-[22px] border bg-white p-5 shadow-[0_10px_30px_rgba(42,27,61,0.04)] sm:p-6"
@@ -25,10 +30,10 @@ export function ProcurementPanel({ items = [] }) {
       <PanelHeading
         eyebrow="Activity"
         eyebrowColor={SURFACE.coral}
-        title="Today's procurement"
+        title={title}
         action={
           <Link
-            to="/requirements"
+            to={actionHref}
             className="font-nav text-[10px] uppercase tracking-[0.14em] transition-colors hover:text-[#44318D]"
             style={{ color: SURFACE.pink }}
           >
@@ -39,10 +44,7 @@ export function ProcurementPanel({ items = [] }) {
 
       <div className="mt-4">
         {items.length === 0 ? (
-          <EmptyRow icon={Activity}>
-            Nothing is scheduled or posted yet today. New
-            supplier activity will appear here.
-          </EmptyRow>
+          <EmptyRow icon={Activity}>{emptyMessage}</EmptyRow>
         ) : (
           items.map((item) => (
             <div

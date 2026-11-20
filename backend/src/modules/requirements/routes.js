@@ -17,6 +17,7 @@ const {
 const Requirement = require("../../models/Requirement");
 const RequirementResponse = require("../../models/RequirementResponse");
 const PharmacyProfile = require("../../models/PharmacyProfile");
+const Connection = require("../../models/Connection");
 const User = require("../../models/User");
 
 const {
@@ -32,6 +33,12 @@ const {
 const {
   createNotification,
 } = require("../notifications/service");
+const { hasCurrentConnectionVerification } = require("../connections/verification");
+const {
+  getRequirementStage,
+  getMRSupportRequestValidationError,
+} = require("./workflow");
+const { MR_SUPPORT_REQUEST_TYPES } = require("../../common/constants");
 
 const router = express.Router();
 
@@ -50,6 +57,11 @@ router.use(requireAuth);
 
 const REQUIREMENT_ROLES = [
   "PHARMACY",
+  "COMPANY",
+  "MR",
+  "DISTRIBUTOR_STOCKIST",
+];
+const REQUIREMENT_SUPPLIER_ROLES = [
   "COMPANY",
   "MR",
   "DISTRIBUTOR_STOCKIST",
@@ -75,6 +87,10 @@ const createSchema = z.object({
   title: z.string().trim().min(3),
 
   description: z.string().trim().min(5),
+
+  requestType: z
+    .enum(MR_SUPPORT_REQUEST_TYPES)
+    .optional(),
 
   urgency: z
     .enum(["LOW", "NORMAL", "HIGH"])
@@ -115,10 +131,22 @@ const updateSchema = z.object({
   urgency: z
     .enum(["LOW", "NORMAL", "HIGH"])
     .optional(),
+
+  requestType: z
+    .enum(MR_SUPPORT_REQUEST_TYPES)
+    .optional(),
 });
 
 const responseSchema = z.object({
   message: z.string().trim().min(5).max(2000),
+});
+
+const responseStatusSchema = z.object({
+  status: z.enum(["PENDING", "SHORTLISTED"]),
+});
+
+const requirementStatusSchema = z.object({
+  status: z.enum(["FULFILLED", "CLOSED"]),
 });
 
 /*
@@ -340,6 +368,9 @@ function serialize(
 
     targetRole,
 
+    requestType:
+      requirement.requestType ?? null,
+
     category:
       requirement.category,
 
@@ -354,6 +385,12 @@ function serialize(
 
     status:
       requirement.status,
+
+    matchingCount:
+      requirement.matchingCount ?? 0,
+
+    fulfilledAt:
+      requirement.fulfilledAt ?? null,
 
     createdAt:
       requirement.createdAt,
@@ -373,6 +410,125 @@ function serialize(
         targetedUser
       ),
   };
+}
+
+async function getWorkflowSummaries(rows, context) {
+  const summaries = new Map();
+  if (context.role !== "PHARMACY" || rows.length === 0) {
+    return summaries;
+  }
+
+  const pharmacy = await PharmacyProfile.findById(context.pharmacyId)
+    .select("userId")
+    .lean();
+  const requirementIds = rows.map((row) => row._id);
+  const responses = await RequirementResponse.find({
+    requirementId: { $in: requirementIds },
+    status: { $in: ["PENDING", "SHORTLISTED", "ACCEPTED"] },
+  })
+    .select("requirementId responderUserId status")
+    .lean();
+  const responsesByRequirement = new Map();
+  for (const response of responses) {
+    const requirementId = response.requirementId.toString();
+    const requirementResponses =
+      responsesByRequirement.get(requirementId) || [];
+    requirementResponses.push(response);
+    responsesByRequirement.set(requirementId, requirementResponses);
+  }
+
+  const responderIds = [
+    ...new Set(responses.map((response) => response.responderUserId.toString())),
+  ];
+  const connectedResponderIds = new Set();
+
+  if (pharmacy?.userId && responderIds.length > 0) {
+    const connections = await Connection.find({
+      status: "ACCEPTED",
+      $or: [
+        {
+          requesterId: pharmacy.userId,
+          recipientId: { $in: responderIds },
+        },
+        {
+          recipientId: pharmacy.userId,
+          requesterId: { $in: responderIds },
+        },
+      ],
+    })
+      .select("requesterId recipientId")
+      .lean();
+
+    for (const connection of connections) {
+      const otherUserId =
+        connection.requesterId.toString() === pharmacy.userId.toString()
+          ? connection.recipientId.toString()
+          : connection.requesterId.toString();
+      connectedResponderIds.add(otherUserId);
+    }
+  }
+
+  for (const row of rows) {
+    const requirementResponses =
+      responsesByRequirement.get(row._id.toString()) || [];
+
+    summaries.set(row._id.toString(), {
+      pipelineStage: getRequirementStage(
+        row,
+        requirementResponses,
+        connectedResponderIds
+      ),
+      responseCount: requirementResponses.length,
+    });
+  }
+
+  return summaries;
+}
+
+async function refreshLegacyMatchingCounts(rows) {
+  const activeRows = rows.filter((row) =>
+    ["OPEN", "MATCHED"].includes(row.status)
+  );
+  if (activeRows.length === 0) return;
+
+  const missingRows = await Requirement.collection
+    .find({
+      _id: { $in: activeRows.map((row) => row._id) },
+      matchingCount: { $exists: false },
+    })
+    .project({ _id: 1 })
+    .toArray();
+  const missingIds = new Set(
+    missingRows.map((row) => row._id.toString())
+  );
+  const rowsToRefresh = activeRows.filter((row) =>
+    missingIds.has(row._id.toString())
+  );
+
+  for (let index = 0; index < rowsToRefresh.length; index += 3) {
+    const batch = rowsToRefresh.slice(index, index + 3);
+    await Promise.all(
+      batch.map(async (row) => {
+        try {
+          const matches = await matchForRequirement(row._id);
+          const matchingCount = Array.isArray(matches) ? matches.length : 0;
+          await Requirement.updateOne(
+            {
+              _id: row._id,
+              matchingCount: { $exists: false },
+            },
+            { $set: { matchingCount } }
+          );
+          row.matchingCount = matchingCount;
+        } catch (matchingError) {
+          console.error(
+            `Legacy requirement matching refresh failed for ${row._id}:`,
+            matchingError
+          );
+        }
+      })
+    );
+  }
 }
 
 /*
@@ -404,9 +560,25 @@ function serialize(
 router.get(
   "/",
   asyncHandler(async (req, res) => {
-    const status =
-      req.query.status ||
-      "OPEN";
+    const status = String(req.query.status || "ALL").toUpperCase();
+    const supportedStatuses = [
+      "ALL",
+      "OPEN",
+      "MATCHING",
+      "RESPONSES",
+      "SHORTLISTED",
+      "CONNECTED",
+      "FULFILLED",
+      "CLOSED",
+    ];
+    if (!supportedStatuses.includes(status)) {
+      return fail(
+        res,
+        400,
+        "VALIDATION_ERROR",
+        "Unsupported requirement status"
+      );
+    }
 
     const context =
       await getCurrentUserContext(
@@ -463,21 +635,36 @@ router.get(
     }
 
     /*
-     * Requirements specifically targeting
-     * the current user's role.
+     * Stockists/distributors receive pharmacy and company supply requests,
+     * but never requirements posted by other stockists/distributors.
      */
-    visibility.push({
-      targetRole:
-        context.role,
-    });
-
-    const rows =
-      await Requirement.find({
-        status,
-        $or: visibility,
-      }).sort({
-        createdAt: -1,
+    if (context.role !== "DISTRIBUTOR_STOCKIST") {
+      visibility.push({
+        targetRole: context.role,
       });
+    } else {
+      visibility.push({
+        targetRole: "DISTRIBUTOR_STOCKIST",
+        ownerRole: { $ne: "DISTRIBUTOR_STOCKIST" },
+      });
+    }
+
+    const query = { $or: visibility };
+    if (context.role !== "PHARMACY" && status !== "ALL") {
+      query.status = status;
+    }
+
+    const rows = await Requirement.find(query).sort({
+      createdAt: -1,
+    });
+    const workflowRows = rows.filter((row) => isOwner(row, context));
+    if (context.role === "PHARMACY") {
+      await refreshLegacyMatchingCounts(workflowRows);
+    }
+    const workflowSummaries = await getWorkflowSummaries(
+      workflowRows,
+      context
+    );
 
     /*
      * Final authorization filter.
@@ -496,14 +683,24 @@ router.get(
         );
       });
 
+    const result = visibleRows.map((row) => {
+      const data = serialize(row, context);
+      const workflow = workflowSummaries.get(row._id.toString());
+
+      return workflow
+        ? { ...data, ...workflow }
+        : { ...data, pipelineStage: row.status };
+    });
+
     return ok(
       res,
-      visibleRows.map((row) =>
-        serialize(
-          row,
-          context
-        )
-      )
+      result.filter((requirement) => {
+        if (status === "ALL") return true;
+        if (context.role === "PHARMACY") {
+          return requirement.pipelineStage === status;
+        }
+        return requirement.status === status;
+      })
     );
   })
 );
@@ -577,13 +774,17 @@ router.get(
       );
     }
 
-    return ok(
-      res,
-      serialize(
-        row,
-        context
-      )
-    );
+    const data = serialize(row, context);
+    const workflow = owner
+      ? await getWorkflowSummaries([row], context)
+      : new Map();
+
+    return ok(res, {
+      ...data,
+      ...(workflow.get(row._id.toString()) || {
+        pipelineStage: row.status,
+      }),
+    });
   })
 );
 
@@ -615,7 +816,10 @@ async function getAccessibleRequirement(id, user) {
   return { row, context, owner, targetedUser };
 }
 
-async function serializeRequirementResponse(response) {
+async function serializeRequirementResponse(
+  response,
+  connectionStatus = null
+) {
   const responderUser = await User.findById(
     response.responderUserId
   ).select("role");
@@ -632,11 +836,62 @@ async function serializeRequirementResponse(response) {
     status: response.status,
     createdAt: response.createdAt,
     responder: {
+      userId: response.responderUserId,
       name: responder.name,
       role: normalizeRole(responder.role || response.responderRole),
       imageUrl: responder.imageUrl || null,
+      connectionStatus,
     },
   };
+}
+
+async function getResponseConnectionStatuses(row, responses) {
+  const pharmacy = await PharmacyProfile.findById(
+    row.pharmacyId || row.ownerId
+  )
+    .select("userId")
+    .lean();
+  if (!pharmacy?.userId || responses.length === 0) {
+    return new Map();
+  }
+
+  const responderIds = [
+    ...new Set(
+      responses.map((response) =>
+        response.responderUserId.toString()
+      )
+    ),
+  ];
+  const connections = await Connection.find({
+    status: { $in: ["PENDING", "ACCEPTED", "DECLINED"] },
+    $or: [
+      {
+        requesterId: pharmacy.userId,
+        recipientId: { $in: responderIds },
+      },
+      {
+        recipientId: pharmacy.userId,
+        requesterId: { $in: responderIds },
+      },
+    ],
+  })
+    .select("requesterId recipientId status")
+    .lean();
+
+  const statuses = new Map();
+  for (const connection of connections) {
+    const responderId =
+      connection.requesterId.toString() === pharmacy.userId.toString()
+        ? connection.recipientId.toString()
+        : connection.requesterId.toString();
+    if (
+      connection.status === "ACCEPTED" ||
+      !statuses.has(responderId)
+    ) {
+      statuses.set(responderId, connection.status);
+    }
+  }
+  return statuses;
 }
 
 router.get(
@@ -658,27 +913,100 @@ router.get(
       requirementId: row._id,
       status: { $nin: ["WITHDRAWN", "REJECTED"] },
     }).sort({ createdAt: -1 });
+    const connectionStatuses = await getResponseConnectionStatuses(
+      row,
+      responses
+    );
 
     return ok(
       res,
-      await Promise.all(responses.map(serializeRequirementResponse))
+      await Promise.all(
+        responses.map((response) =>
+          serializeRequirementResponse(
+            response,
+            connectionStatuses.get(
+              response.responderUserId.toString()
+            ) || null
+          )
+        )
+      )
+    );
+  })
+);
+
+router.patch(
+  "/:id/responses/:responseId",
+  requireRole("PHARMACY"),
+  asyncHandler(async (req, res) => {
+    const parsed = responseStatusSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(
+        res,
+        400,
+        "VALIDATION_ERROR",
+        parsed.error.issues[0]?.message || "Invalid response status"
+      );
+    }
+
+    const { row, owner } = await getAccessibleRequirement(
+      req.params.id,
+      req.user
+    );
+    if (!owner) {
+      throw new ApiError(
+        403,
+        "FORBIDDEN",
+        "Only the requirement owner can review responses"
+      );
+    }
+
+    const response = await RequirementResponse.findOne({
+      _id: req.params.responseId,
+      requirementId: row._id,
+    });
+    if (!response) {
+      throw new ApiError(404, "NOT_FOUND", "Supplier response not found");
+    }
+    if (!["PENDING", "SHORTLISTED"].includes(response.status)) {
+      throw new ApiError(
+        409,
+        "RESPONSE_ALREADY_RESOLVED",
+        "Only pending or shortlisted responses can be updated"
+      );
+    }
+
+    response.status = parsed.data.status;
+    await response.save();
+
+    const connectionStatuses = await getResponseConnectionStatuses(
+      row,
+      [response]
+    );
+    return ok(
+      res,
+      await serializeRequirementResponse(
+        response,
+        connectionStatuses.get(response.responderUserId.toString()) || null
+      )
     );
   })
 );
 
 router.get(
   "/:id/my-response",
-  requireRole("DISTRIBUTOR_STOCKIST"),
   asyncHandler(async (req, res) => {
-    const { row, targetedUser } = await getAccessibleRequirement(
+    const { row, context, targetedUser } = await getAccessibleRequirement(
       req.params.id,
       req.user
     );
-    if (!targetedUser) {
+    if (
+      !REQUIREMENT_SUPPLIER_ROLES.includes(context.role) ||
+      !targetedUser
+    ) {
       throw new ApiError(
         403,
         "FORBIDDEN",
-        "This requirement is not intended for distributors or stockists"
+        "This requirement is not intended for your supplier role"
       );
     }
 
@@ -696,7 +1024,6 @@ router.get(
 
 router.post(
   "/:id/responses",
-  requireRole("DISTRIBUTOR_STOCKIST"),
   asyncHandler(async (req, res) => {
     const parsed = responseSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -710,17 +1037,30 @@ router.post(
 
     const { row, context, owner, targetedUser } =
       await getAccessibleRequirement(req.params.id, req.user);
-    const isPharmacyRequirement =
+    const isProcurementRequirement =
       row.ownerRole === "PHARMACY" ||
+      row.ownerRole === "DISTRIBUTOR_STOCKIST" ||
       (!row.ownerRole && row.pharmacyId);
-    if (owner || !targetedUser || !isPharmacyRequirement) {
+    if (
+      owner ||
+      !targetedUser ||
+      !isProcurementRequirement ||
+      !REQUIREMENT_SUPPLIER_ROLES.includes(context.role)
+    ) {
       throw new ApiError(
         403,
         "FORBIDDEN",
-        "Only pharmacy requirements intended for distributors or stockists can be answered"
+        "Only procurement requirements intended for your supplier role can be answered"
       );
     }
-    if (row.status !== "OPEN") {
+    if (context.role === "MR" && !row.requestType) {
+      throw new ApiError(
+        409,
+        "LEGACY_MR_REQUEST_FORMAT",
+        "This older request must be updated to a Medical Representative support request before it can be answered."
+      );
+    }
+    if (!["OPEN", "MATCHED"].includes(row.status)) {
       throw new ApiError(
         409,
         "REQUIREMENT_CLOSED",
@@ -728,23 +1068,55 @@ router.post(
       );
     }
 
-    const profile = await getStockistProfileByUserId(req.user.sub);
-    if (!profile.businessVerified) {
-      throw new ApiError(
-        403,
-        "DISTRIBUTOR_NOT_VERIFIED",
-        "Your distributor or stockist account must be verified before responding to pharmacy requirements"
-      );
-    }
+    const responderUser = await User.findById(req.user.sub).select(
+      "_id role status"
+    );
     if (
-      profile.licenceExpiryDate &&
-      new Date(profile.licenceExpiryDate) <= new Date()
+      !responderUser ||
+      responderUser.status !== "ACTIVE" ||
+      !(await hasCurrentConnectionVerification(responderUser))
     ) {
       throw new ApiError(
         403,
-        "DISTRIBUTOR_LICENCE_EXPIRED",
-        "Your wholesale licence has expired. Renew and verify it before responding"
+        "SUPPLIER_NOT_VERIFIED",
+        "Your account must be active and have current admin-approved verification before responding"
       );
+    }
+
+    let supplierName;
+    if (context.role === "DISTRIBUTOR_STOCKIST") {
+      const profile = await getStockistProfileByUserId(req.user.sub);
+      if (!profile) {
+        throw new ApiError(
+          404,
+          "DISTRIBUTOR_PROFILE_NOT_FOUND",
+          "Distributor or stockist profile not found"
+        );
+      }
+      if (!profile.businessVerified) {
+        throw new ApiError(
+          403,
+          "DISTRIBUTOR_NOT_VERIFIED",
+          "Your distributor or stockist account must be verified before responding to pharmacy requirements"
+        );
+      }
+      if (
+        profile.licenceExpiryDate &&
+        new Date(profile.licenceExpiryDate) <= new Date()
+      ) {
+        throw new ApiError(
+          403,
+          "DISTRIBUTOR_LICENCE_EXPIRED",
+          "Your wholesale licence has expired. Renew and verify it before responding"
+        );
+      }
+      supplierName = profile.companyName;
+    } else {
+      const displayProfile = await getDisplayProfile(
+        responderUser._id,
+        responderUser.role
+      );
+      supplierName = displayProfile.name;
     }
 
     const existingResponse = await RequirementResponse.findOne({
@@ -787,7 +1159,7 @@ router.post(
           userId: pharmacy.userId,
           type: "SYSTEM",
           title: "New supplier response",
-          body: `${profile.companyName} responded to your requirement: ${row.title}`,
+          body: `${supplierName} responded to your requirement: ${row.title}`,
           data: {
             requirementId: row._id,
             responseId: response._id,
@@ -806,7 +1178,7 @@ router.post(
         status: response.status,
         createdAt: response.createdAt,
         responder: {
-          name: profile.companyName,
+          name: supplierName,
           role: context.role,
           imageUrl: null,
         },
@@ -832,7 +1204,7 @@ router.post(
 
 router.post(
   "/",
-  requireRole("PHARMACY"),
+  requireRole("PHARMACY", "DISTRIBUTOR_STOCKIST", "DISTRIBUTOR", "STOCKIST"),
   asyncHandler(async (req, res) => {
     const parsed =
       createSchema.safeParse(
@@ -849,23 +1221,23 @@ router.post(
       );
     }
 
-    const pharmacy =
-      await getPharmacyProfileByUserId(
-        req.user.sub
-      );
+    const contextRole = normalizeRole(req.user.role);
+    let pharmacyId = null;
 
-    if (!pharmacy) {
-      return fail(
-        res,
-        404,
-        "PHARMACY_PROFILE_NOT_FOUND",
-        "Pharmacy profile not found"
-      );
+    if (contextRole === "PHARMACY") {
+      const pharmacy =
+        await getPharmacyProfileByUserId(req.user.sub);
+
+      if (!pharmacy) {
+        return fail(
+          res,
+          404,
+          "PHARMACY_PROFILE_NOT_FOUND",
+          "Pharmacy profile not found"
+        );
+      }
+      pharmacyId = pharmacy.id ?? pharmacy._id;
     }
-
-    const pharmacyId =
-      pharmacy.id ??
-      pharmacy._id;
 
     const {
       category,
@@ -874,6 +1246,7 @@ router.post(
       urgency,
       supplierType,
       targetRole,
+      requestType,
     } = parsed.data;
 
     /*
@@ -884,6 +1257,18 @@ router.post(
     const finalTargetRole =
       targetRole ||
       supplierType;
+
+    if (
+      contextRole === "DISTRIBUTOR_STOCKIST" &&
+      finalTargetRole !== "COMPANY"
+    ) {
+      return fail(
+        res,
+        400,
+        "INVALID_TARGET_ROLE",
+        "Stockist and distributor requirements can only be sent to pharmaceutical companies."
+      );
+    }
 
     /*
      * Pharmacy requirements may target
@@ -906,6 +1291,25 @@ router.post(
       );
     }
 
+    const requestValidationError =
+      getMRSupportRequestValidationError(
+        finalTargetRole,
+        category,
+        requestType
+      );
+    if (requestValidationError) {
+      return fail(
+        res,
+        400,
+        "INVALID_MR_SUPPORT_REQUEST_TYPE",
+        requestValidationError === "INVALID_THERAPEUTIC_AREA"
+          ? "Select a supported therapeutic area for Medical Representative matching."
+          : requestValidationError === "REQUEST_TYPE_REQUIRED"
+            ? "Select the kind of support you need from the Medical Representative."
+            : "Support request types can only be used for Medical Representative requests."
+      );
+    }
+
     const row =
       await Requirement.create({
         /*
@@ -917,10 +1321,10 @@ router.post(
          * New role-based ownership fields.
          */
         ownerId:
-          pharmacyId,
+          contextRole === "PHARMACY" ? pharmacyId : req.user.sub,
 
         ownerRole:
-          "PHARMACY",
+          contextRole,
 
         /*
          * This determines exactly which role
@@ -928,6 +1332,11 @@ router.post(
          */
         targetRole:
           finalTargetRole,
+
+        requestType:
+          finalTargetRole === "MR"
+            ? requestType
+            : null,
 
         category,
         title,
@@ -969,10 +1378,14 @@ router.post(
               "REQUIREMENT_MATCH",
 
             title:
-              "New pharmacy requirement matches your profile",
+              finalTargetRole === "MR"
+                ? "New pharmacy support request matches your profile"
+                : "New pharmacy requirement matches your profile",
 
             body:
-              `${pharmacy.pharmacyName} is looking for ${category} products/services.`,
+              finalTargetRole === "MR"
+                ? `${pharmacy.pharmacyName} requests ${requestType.toLowerCase().replaceAll("_", " ")} support in ${category}.`
+                : `${pharmacy.pharmacyName} is looking for ${category} products/services.`,
 
             data: {
               requirementId:
@@ -1006,6 +1419,9 @@ router.post(
         matchingError
       );
     }
+
+    row.matchingCount = matchedCount;
+    await row.save();
 
     return created(
       res,
@@ -1108,6 +1524,25 @@ router.patch(
       );
     }
 
+    const requestValidationError =
+      getMRSupportRequestValidationError(
+        normalizeRole(row.targetRole),
+        parsed.data.category ?? row.category,
+        parsed.data.requestType ?? row.requestType
+      );
+    if (requestValidationError) {
+      return fail(
+        res,
+        400,
+        "INVALID_MR_SUPPORT_REQUEST_TYPE",
+        requestValidationError === "INVALID_THERAPEUTIC_AREA"
+          ? "Select a supported therapeutic area for Medical Representative matching."
+          : requestValidationError === "REQUEST_TYPE_REQUIRED"
+            ? "Select the kind of support you need from the Medical Representative."
+            : "Support request types can only be used for Medical Representative requests."
+      );
+    }
+
     Object.assign(
       row,
       parsed.data
@@ -1129,6 +1564,73 @@ router.patch(
           ),
       }
     );
+  })
+);
+
+router.patch(
+  "/:id/status",
+  requireRole("PHARMACY"),
+  asyncHandler(async (req, res) => {
+    const parsed = requirementStatusSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(
+        res,
+        400,
+        "VALIDATION_ERROR",
+        parsed.error.issues[0]?.message || "Invalid requirement status"
+      );
+    }
+
+    const row = await Requirement.findById(req.params.id);
+    if (!row) {
+      return fail(res, 404, "NOT_FOUND", "Requirement not found");
+    }
+
+    const pharmacy = await getPharmacyProfileByUserId(req.user.sub);
+    if (!pharmacy) {
+      return fail(
+        res,
+        404,
+        "PHARMACY_PROFILE_NOT_FOUND",
+        "Pharmacy profile not found"
+      );
+    }
+
+    const pharmacyId = pharmacy.id ?? pharmacy._id;
+    if (!isOwner(row, {
+      role: "PHARMACY",
+      ownerId: pharmacyId,
+      pharmacyId,
+    })) {
+      throw new ApiError(
+        403,
+        "FORBIDDEN",
+        "You can only update your own requirement"
+      );
+    }
+    if (!["OPEN", "MATCHED"].includes(row.status)) {
+      throw new ApiError(
+        409,
+        "REQUIREMENT_ALREADY_CLOSED",
+        "This requirement is already fulfilled or closed"
+      );
+    }
+
+    row.status = parsed.data.status;
+    row.fulfilledAt =
+      parsed.data.status === "FULFILLED" ? new Date() : null;
+    await row.save();
+
+    return ok(res, {
+      requirement: serialize(
+        row,
+        {
+          role: "PHARMACY",
+          ownerId: pharmacyId,
+          pharmacyId,
+        }
+      ),
+    });
   })
 );
 

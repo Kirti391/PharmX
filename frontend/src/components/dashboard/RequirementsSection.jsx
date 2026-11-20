@@ -3,7 +3,7 @@ import { ArrowRight, PackageSearch } from "lucide-react";
 
 import { SURFACE } from "./dashboardTheme";
 import { Eyebrow } from "./DashboardPrimitives";
-import { RequirementFeatureCard } from "./RequirementFeatureCard";
+import RequirementSummaryCard from "../requirements/RequirementSummaryCard";
 
 /* =========================================================
    PHARMUNIS — PROCUREMENT REQUIREMENTS
@@ -12,7 +12,7 @@ import { RequirementFeatureCard } from "./RequirementFeatureCard";
 
 const MAX_CARDS = 3;
 
-function SectionHeader() {
+function SectionHeader({ isMR = false, isCompany = false }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3.5">
@@ -23,12 +23,22 @@ function SectionHeader() {
           <PackageSearch size={20} strokeWidth={1.6} />
         </span>
         <div>
-          <Eyebrow color={SURFACE.pink}>Procurement</Eyebrow>
+          <Eyebrow color={SURFACE.pink}>
+            {isMR
+              ? "Pharmacy demand"
+              : isCompany
+                ? "Partner demand"
+                : "Procurement"}
+          </Eyebrow>
           <h2
             className="mt-1 font-editorial text-[21px] font-semibold leading-tight sm:text-[24px]"
             style={{ color: SURFACE.ink }}
           >
-            Requirements
+            {isMR
+              ? "Pharmacy requests for you"
+              : isCompany
+                ? "Partner requests for your company"
+                : "Requirements"}
           </h2>
         </div>
       </div>
@@ -41,7 +51,11 @@ function SectionHeader() {
           color: SURFACE.pink,
         }}
       >
-        All requirements
+        {isMR
+          ? "Browse requests"
+          : isCompany
+            ? "View partner requests"
+            : "All requirements"}
         <ArrowRight
           size={13}
           className="transition-transform duration-200 group-hover:translate-x-1"
@@ -51,7 +65,75 @@ function SectionHeader() {
   );
 }
 
-function StartWorkspacePanel() {
+function StartWorkspacePanel({ isMR = false, isCompany = false }) {
+  if (isMR) {
+    return (
+      <div
+        className="rounded-[16px] px-6 py-7 sm:px-8 sm:py-8"
+        style={{ backgroundColor: SURFACE.lavender }}
+      >
+        <PackageSearch
+          size={24}
+          strokeWidth={1.5}
+          style={{ color: SURFACE.purple }}
+        />
+        <h3
+          className="mt-4 font-editorial text-[20px] font-semibold"
+          style={{ color: SURFACE.ink }}
+        >
+          No pharmacy requests for you yet.
+        </h3>
+        <p
+          className="mt-3 max-w-xl font-body text-[11px] leading-6"
+          style={{ color: SURFACE.inkSoft }}
+        >
+          Pharmacy requests addressed to Medical Representatives will appear
+          here.
+        </p>
+      </div>
+    );
+  }
+
+  if (isCompany) {
+    return (
+      <div
+        className="rounded-[16px] px-6 py-7 sm:px-8 sm:py-8"
+        style={{ backgroundColor: SURFACE.lavender }}
+      >
+        <PackageSearch
+          size={24}
+          strokeWidth={1.5}
+          style={{ color: SURFACE.purple }}
+        />
+        <h3
+          className="mt-4 font-editorial text-[20px] font-semibold"
+          style={{ color: SURFACE.ink }}
+        >
+          No partner requests yet.
+        </h3>
+        <p
+          className="mt-3 max-w-xl font-body text-[11px] leading-6"
+          style={{ color: SURFACE.inkSoft }}
+        >
+          Pharmacy and distributor requests addressed to your company will
+          appear here. To recruit representatives or expand distribution, post
+          an opportunity.
+        </p>
+        <Link
+          to="/opportunities/create"
+          className="group mt-6 inline-flex items-center gap-2 rounded-full px-5 py-3 font-nav text-[9px] uppercase tracking-[0.1em] text-white transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_12px_26px_rgba(68,49,141,0.24)]"
+          style={{ backgroundColor: SURFACE.purple }}
+        >
+          Create an opportunity
+          <ArrowRight
+            size={15}
+            className="transition-transform duration-200 group-hover:translate-x-1"
+          />
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div
       className="rounded-[16px] px-6 py-7 sm:px-8 sm:py-8"
@@ -99,7 +181,7 @@ function StartWorkspacePanel() {
   );
 }
 
-function NoResultsPanel({ query }) {
+function NoResultsPanel({ query, isMR = false, isCompany = false }) {
   return (
     <div
       className="rounded-[16px] border px-7 py-8"
@@ -109,13 +191,23 @@ function NoResultsPanel({ query }) {
         className="font-body text-[12.5px] leading-6"
         style={{ color: SURFACE.inkSoft }}
       >
-        {`No requirements match "${query}". Try a different category, supplier or status.`}
+        {isMR
+          ? `No pharmacy requests match "${query}". Try a different category, territory or status.`
+          : isCompany
+            ? `No partner requests match "${query}". Try a different category, territory or status.`
+              : `No requirements match "${query}". Try a different category, supplier or status.`}
       </p>
     </div>
   );
 }
 
-export function RequirementsSection({ requirements = [], query = "" }) {
+export function RequirementsSection({
+  requirements = [],
+  query = "",
+  role = "PHARMACY",
+}) {
+  const isMR = role === "MR";
+  const isCompany = role === "PHARMA_COMPANY";
   const visible = requirements.slice(0, MAX_CARDS);
 
   return (
@@ -123,22 +215,25 @@ export function RequirementsSection({ requirements = [], query = "" }) {
       className="rounded-[20px] border bg-white p-5 shadow-[0_8px_28px_rgba(42,27,61,0.035)] sm:p-7"
       style={{ borderColor: SURFACE.hairline }}
     >
-      <SectionHeader />
+      <SectionHeader isMR={isMR} isCompany={isCompany} />
 
       <div className="mt-5 border-t pt-5 sm:mt-6 sm:pt-6" style={{ borderColor: SURFACE.hairline }}>
         {requirements.length === 0 ? (
           query ? (
-            <NoResultsPanel query={query} />
+            <NoResultsPanel
+              query={query}
+              isMR={isMR}
+              isCompany={isCompany}
+            />
           ) : (
-            <StartWorkspacePanel />
+            <StartWorkspacePanel isMR={isMR} isCompany={isCompany} />
           )
         ) : (
           <div className="space-y-3">
-            {visible.map((requirement, index) => (
-              <RequirementFeatureCard
+            {visible.map((requirement) => (
+              <RequirementSummaryCard
                 key={requirement.id}
                 requirement={requirement}
-                index={index}
               />
             ))}
           </div>

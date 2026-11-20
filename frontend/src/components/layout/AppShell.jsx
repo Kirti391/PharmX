@@ -11,6 +11,7 @@ import {
 
 import { useAuthStore } from "../../store/authStore";
 import { http } from "../../lib/api";
+import { PROFILE_IMAGE_UPDATED_EVENT } from "../../lib/profileImageEvents";
 import { useRealtimeEvent } from "../../lib/socket";
 import { ROLE_LABELS } from "../../lib/constants";
 import logo from "../../assets/pharmunis logo.png";
@@ -19,6 +20,13 @@ import {
   isNavigationActive,
   userInitials,
 } from "./shellNavigation";
+
+const PROFILE_IMAGE_BY_ROLE = {
+  PHARMA_COMPANY: { route: "pharma", field: "logoUrl" },
+  MR: { route: "mr", field: "profileImageUrl" },
+  PHARMACY: { route: "pharmacy", field: "profileImage" },
+  DOCTOR: { route: "doctor", field: "profileImageUrl" },
+};
 
 /* =========================================================
    APP SHELL
@@ -31,6 +39,7 @@ export function AppShell({ children }) {
   const { user, clear } = useAuthStore();
 
   const [unread, setUnread] = useState(0);
+  const [profileImageUrl, setProfileImageUrl] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     window.matchMedia("(max-width: 767px)").matches
@@ -62,6 +71,47 @@ export function AppShell({ children }) {
     secondary: secondaryItems,
     workspaceLabel,
   } = getNavigationForRole(user?.role);
+
+  useEffect(() => {
+    let cancelled = false;
+    const source = PROFILE_IMAGE_BY_ROLE[user?.role];
+
+    setProfileImageUrl(null);
+    if (!source) return undefined;
+
+    http
+      .get(`/profiles/${source.route}/me`)
+      .then((profile) => {
+        if (!cancelled) {
+          setProfileImageUrl(profile[source.field] || null);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error("Unable to load the sidebar profile image:", error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.role]);
+
+  useEffect(() => {
+    function handleProfileImageUpdated(event) {
+      setProfileImageUrl(event.detail?.imageUrl || null);
+    }
+
+    window.addEventListener(
+      PROFILE_IMAGE_UPDATED_EVENT,
+      handleProfileImageUpdated
+    );
+    return () =>
+      window.removeEventListener(
+        PROFILE_IMAGE_UPDATED_EVENT,
+        handleProfileImageUpdated
+      );
+  }, []);
 
   /* =======================================================
      PERSIST SIDEBAR STATE
@@ -236,7 +286,7 @@ export function AppShell({ children }) {
                 rounded-full
                 bg-[#E98074]
                 px-1
-                font-[Unica_One]
+                font-[Philosopher]
                 text-[8px]
                 text-white
               "
@@ -378,7 +428,7 @@ export function AppShell({ children }) {
                   className="
                     mt-0.5
                     whitespace-nowrap
-                    font-[Unica_One]
+                    font-[Philosopher]
                     text-[8px]
                     uppercase
                     tracking-[0.24em]
@@ -407,7 +457,7 @@ export function AppShell({ children }) {
             >
               <p
                 className="
-                  font-[Unica_One]
+                  font-[Philosopher]
                   text-[9px]
                   uppercase
                   tracking-[0.22em]
@@ -469,7 +519,7 @@ export function AppShell({ children }) {
               className="
                 mb-3
                 px-3
-                font-[Unica_One]
+                font-[Philosopher]
                 text-[9px]
                 uppercase
                 tracking-[0.22em]
@@ -511,7 +561,7 @@ export function AppShell({ children }) {
                   className="
                     mb-3
                     px-3
-                    font-[Unica_One]
+                    font-[Philosopher]
                     text-[9px]
                     uppercase
                     tracking-[0.22em]
@@ -580,13 +630,23 @@ export function AppShell({ children }) {
                   items-center
                   justify-center
                   rounded-full
+                  overflow-hidden
                   bg-[#44318D]
-                  font-[Unica_One]
+                  font-[Philosopher]
                   text-[10px]
                   text-white
                 "
               >
-                {userInitials(user?.name || user?.email)}
+                {profileImageUrl ? (
+                  <img
+                    src={profileImageUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    onError={() => setProfileImageUrl(null)}
+                  />
+                ) : (
+                  userInitials(user?.name || user?.email)
+                )}
               </div>
 
               {!sidebarCollapsed && (
@@ -607,7 +667,7 @@ export function AppShell({ children }) {
                     className="
                       mt-0.5
                       truncate
-                      font-[Unica_One]
+                      font-[Philosopher]
                       text-[8px]
                       uppercase
                       tracking-[0.12em]
@@ -628,7 +688,7 @@ export function AppShell({ children }) {
               onClick={logout}
               title={sidebarCollapsed ? "Log out" : undefined}
               className={[
-                "group mt-3 flex font-[Unica_One] text-[9px] uppercase tracking-[0.14em] text-[#A4B3B6] transition-colors duration-200 hover:text-[#D83F87]",
+                "group mt-3 flex font-[Philosopher] text-[9px] uppercase tracking-[0.14em] text-[#A4B3B6] transition-colors duration-200 hover:text-[#D83F87]",
                 sidebarCollapsed
                   ? "w-full justify-center px-2"
                   : "w-full items-center gap-2 px-2",

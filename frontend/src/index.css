@@ -1,5 +1,5 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Fauna+One&family=Great+Vibes&family=Philosopher:wght@400;700&family=Unica+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Fauna+One&family=Great+Vibes&family=Philosopher:wght@400;700&display=swap');
 @import "tailwindcss";
 
 /* =========================================================
@@ -28,7 +28,7 @@
   --font-editorial: "Cinzel", serif;
   --font-body: "Fauna One", serif;
   --font-script: "Great Vibes", cursive;
-  --font-nav: "Unica One", sans-serif;
+  --font-nav: "Philosopher", sans-serif;
   --font-support: "Philosopher", sans-serif;
 }
 
@@ -79,7 +79,7 @@ body {
 }
 
 .font-nav {
-  font-family: "Unica One", sans-serif;
+  font-family: "Philosopher", sans-serif;
 }
 
 .font-support {
@@ -87,7 +87,7 @@ body {
 }
 
 .workspace-label {
-  font-family: "Unica One", sans-serif;
+  font-family: "Philosopher", sans-serif;
   font-size: 9px;
   letter-spacing: 0.15em;
   line-height: 1.4;
@@ -575,11 +575,32 @@ body {
   color: #ded9e8 !important;
 }
 
-.admin-dashboard > section[aria-label="Platform metrics"] {
-  overflow: hidden;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(25, 27, 40, 0.62);
+.admin-dashboard .admin-metrics-section {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 24px;
+  padding: 1.25rem;
+  background: rgba(20, 23, 34, 0.58);
+}
+
+.admin-dashboard div.admin-metric-card {
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  background-color: #191b28 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+}
+
+.admin-dashboard div.admin-metric-card:hover {
+  border-color: rgba(216, 63, 135, 0.38) !important;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24) !important;
+}
+
+.admin-dashboard a.admin-action {
+  border-color: rgba(255, 255, 255, 0.09);
+  background-color: rgba(255, 255, 255, 0.025);
+}
+
+.admin-dashboard a.admin-action:hover {
+  border-color: rgba(216, 63, 135, 0.28);
+  background-color: rgba(255, 255, 255, 0.06);
 }
 
 @media (max-width: 767px) {

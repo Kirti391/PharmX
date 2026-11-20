@@ -91,6 +91,10 @@ const LEADS_NAV = {
 const MR_NAV = [
   PHARMACY_NAV[0],
   {
+    ...PHARMACY_NAV[1],
+    label: "Pharmacy requests",
+  },
+  {
     href: "/opportunities",
     label: "Company opportunities",
     icon: BriefcaseBusiness,
@@ -98,7 +102,6 @@ const MR_NAV = [
   },
   LEADS_NAV,
   CATALOGUE_NAV,
-  PHARMACY_NAV[1],
   {
     href: "/discover/pharmacies",
     label: "Pharmacies",
@@ -142,7 +145,10 @@ const COMPANY_NAV = [
   },
   LEADS_NAV,
   CATALOGUE_NAV,
-  PHARMACY_NAV[1],
+  {
+    ...PHARMACY_NAV[1],
+    label: "Partner requests",
+  },
   {
     href: "/discover/mrs",
     label: "Medical representatives",

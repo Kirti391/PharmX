@@ -195,7 +195,7 @@ export default function CataloguePage() {
           <p className="font-nav text-[9px] uppercase tracking-[0.18em] text-primary">PharmUnis marketplace</p>
           <h1 className="mt-2 font-display text-2xl font-semibold text-navy sm:text-3xl">Product catalogue</h1>
           <p className="mt-2 max-w-2xl text-xs leading-6 text-[#6E6658]">
-            Browse products published by verified pharmaceutical companies. This catalogue is informational only; PharmX does not process medicine orders, prescriptions, inventory, or payments.
+            Browse products published by verified pharmaceutical companies. This catalogue is informational only; PharmUnis does not process medicine orders, prescriptions, inventory, or payments.
           </p>
         </div>
         {isCompany && (

@@ -32,7 +32,10 @@ import {
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
-export function CalendarRail({ appointments = [] }) {
+export function CalendarRail({
+  appointments = [],
+  emptyMessage = "No upcoming meetings. Connect with a supplier to schedule your first appointment.",
+}) {
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [selected, setSelected] = useState(() => new Date());
 
@@ -187,8 +190,7 @@ export function CalendarRail({ appointments = [] }) {
 
         {appointments.length === 0 ? (
           <EmptyRow icon={CalendarDays}>
-            No upcoming meetings. Connect with a supplier to
-            schedule your first appointment.
+            {emptyMessage}
           </EmptyRow>
         ) : (
           <div className="mt-4">

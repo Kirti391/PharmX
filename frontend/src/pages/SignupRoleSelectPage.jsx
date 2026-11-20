@@ -153,7 +153,7 @@ export default function SignupRoleSelectPage() {
                   tracking-[0.22em]
                   text-[#A4B3B6]/60
                 "
-                style={{ fontFamily: "Unica One" }}
+                style={{ fontFamily: "Philosopher" }}
               >
                 Select your role
               </span>
@@ -165,7 +165,7 @@ export default function SignupRoleSelectPage() {
                   tracking-[0.22em]
                   text-[#A4B3B6]/40
                 "
-                style={{ fontFamily: "Unica One" }}
+                style={{ fontFamily: "Philosopher" }}
               >
                 05 options
               </span>
@@ -204,7 +204,7 @@ export default function SignupRoleSelectPage() {
                       group-hover:text-[#D83F87]
                       transition-colors
                     "
-                    style={{ fontFamily: "Unica One" }}
+                    style={{ fontFamily: "Philosopher" }}
                   >
                     {role.number}
                   </span>

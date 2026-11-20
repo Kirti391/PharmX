@@ -100,7 +100,7 @@ const StickyRoleCard = ({
         <div className="flex items-center justify-between">
           <span
             className="
-              font-['Unica_One']
+              font-['Philosopher']
               text-xs
               tracking-[3px]
               text-[#D83F87]
@@ -215,7 +215,7 @@ const StickyRoleCard = ({
         justify-center
         rounded-md
         bg-[#D83F87]
-        font-['Unica_One']
+        font-['Philosopher']
         text-[10px]
         text-white
       "

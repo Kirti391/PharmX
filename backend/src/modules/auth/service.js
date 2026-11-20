@@ -192,6 +192,14 @@ async function logout(refreshToken) {
 }
 
 async function forgotPassword(email) {
+  if (env.nodeEnv !== "development") {
+    throw new ApiError(
+      503,
+      "PASSWORD_RESET_UNAVAILABLE",
+      "Password reset email delivery is not configured. Contact support for assistance."
+    );
+  }
+
   const user = await User.findOne({ email });
   // Always behave the same way whether or not the account exists, to avoid leaking registered emails.
   if (!user) return { devResetToken: undefined };
@@ -202,7 +210,7 @@ async function forgotPassword(email) {
     // eslint-disable-next-line no-console
     console.log(`[DEV RESET LINK] token for ${email}: ${resetToken}`);
   }
-  return { devResetToken: env.nodeEnv === "development" ? resetToken : undefined };
+  return { devResetToken: resetToken };
 }
 
 async function resetPassword(resetToken, newPassword) {

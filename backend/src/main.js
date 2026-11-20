@@ -322,7 +322,7 @@ connectDB().then(() => {
     () => {
       // eslint-disable-next-line no-console
       console.log(
-        `PharmX API listening on http://localhost:${env.port} (${env.nodeEnv})`
+        `PharmUnis API listening on http://localhost:${env.port} (${env.nodeEnv})`
       );
     }
   );

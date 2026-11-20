@@ -23,6 +23,7 @@ import {
 
 import { http, apiErrorMessage } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
+import { getMRSupportRequestLabel } from "../lib/constants";
 import {
   Card,
   Loader,
@@ -41,6 +42,12 @@ const colors = {
   background: "#FCFAF8",
   border: "#E9E2EA",
 };
+
+const SUPPLIER_ROLES = [
+  "COMPANY",
+  "MR",
+  "DISTRIBUTOR_STOCKIST",
+];
 
 /*
 |--------------------------------------------------------------------------
@@ -170,25 +177,20 @@ function getMatchScore(score) {
 |--------------------------------------------------------------------------
 */
 
-function getProgress(status) {
-  const steps = [
-    {
-      key: "OPEN",
-      label: "Requirement posted",
-    },
-    {
-      key: "MATCHING",
-      label: "Matching suppliers",
-    },
-    {
-      key: "CONNECTED",
-      label: "Supplier connection",
-    },
-    {
-      key: "FULFILLED",
-      label: "Procurement fulfilled",
-    },
-  ];
+function getProgress(status, isMRSupportRequest) {
+  const steps = isMRSupportRequest
+    ? [
+        { key: "OPEN", label: "Support request posted" },
+        { key: "MATCHING", label: "Matching representatives" },
+        { key: "CONNECTED", label: "MR connected" },
+        { key: "FULFILLED", label: "Support completed" },
+      ]
+    : [
+        { key: "OPEN", label: "Requirement posted" },
+        { key: "MATCHING", label: "Matching suppliers" },
+        { key: "CONNECTED", label: "Supplier connection" },
+        { key: "FULFILLED", label: "Procurement fulfilled" },
+      ];
 
   const statusMap = {
     OPEN: 0,
@@ -243,6 +245,10 @@ export default function RequirementDetailPage() {
   const [responseError, setResponseError] = useState("");
 
   const [submittingResponse, setSubmittingResponse] = useState(false);
+
+  const [updatingRequirementStatus, setUpdatingRequirementStatus] = useState(false);
+
+  const [updatingResponseId, setUpdatingResponseId] = useState(null);
 
   const [loadingDelete, setLoadingDelete] =
     useState(false);
@@ -378,11 +384,27 @@ export default function RequirementDetailPage() {
 
           if (!mounted) return;
 
-          setMatches(
-            Array.isArray(matchesData)
-              ? matchesData
-              : []
-          );
+          const matchingProfiles = Array.isArray(matchesData)
+            ? matchesData
+            : [];
+          setMatches(matchingProfiles);
+          setRequirement((current) => {
+            if (!current) return current;
+            const currentStage =
+              current.pipelineStage || current.status;
+            const pipelineStage =
+              ["OPEN", "MATCHING"].includes(currentStage)
+                ? matchingProfiles.length > 0
+                  ? "MATCHING"
+                  : "OPEN"
+                : currentStage;
+
+            return {
+              ...current,
+              matchingCount: matchingProfiles.length,
+              pipelineStage,
+            };
+          });
 
           setMatchesPrivate(false);
         } catch (matchError) {
@@ -501,6 +523,48 @@ export default function RequirementDetailPage() {
     }
   }
 
+  async function updateRequirementStatus(status) {
+    setUpdatingRequirementStatus(true);
+    setError("");
+
+    try {
+      const result = await http.patch(
+        `/requirements/${id}/status`,
+        { status }
+      );
+      setRequirement(result.requirement);
+    } catch (requestError) {
+      setError(
+        apiErrorMessage(requestError, "Unable to update this requirement.")
+      );
+    } finally {
+      setUpdatingRequirementStatus(false);
+    }
+  }
+
+  async function updateResponseStatus(response, status) {
+    setUpdatingResponseId(response.id);
+    setResponseError("");
+
+    try {
+      const updatedResponse = await http.patch(
+        `/requirements/${id}/responses/${response.id}`,
+        { status }
+      );
+      setResponses((current) =>
+        current?.map((item) =>
+          item.id === updatedResponse.id ? updatedResponse : item
+        ) ?? current
+      );
+    } catch (requestError) {
+      setResponseError(
+        apiErrorMessage(requestError, "Unable to update this supplier response.")
+      );
+    } finally {
+      setUpdatingResponseId(null);
+    }
+  }
+
   /*
   |--------------------------------------------------------------------------
   | Permissions
@@ -518,6 +582,10 @@ export default function RequirementDetailPage() {
     normalizeRole(
       requirement?.targetRole
     );
+  const isMRTargetedRequest = targetRole === "MR";
+  const isMRSupportRequest = isMRTargetedRequest;
+  const isLegacyMRRequest =
+    isMRTargetedRequest && !requirement?.requestType;
 
   const canManage =
     isOwner &&
@@ -538,9 +606,14 @@ export default function RequirementDetailPage() {
   const progress = useMemo(
     () =>
       getProgress(
-        requirement?.status
+        requirement?.pipelineStage || requirement?.status,
+        isMRSupportRequest
       ),
-    [requirement?.status]
+    [
+      requirement?.pipelineStage,
+      requirement?.status,
+      isMRSupportRequest,
+    ]
   );
 
   /*
@@ -627,7 +700,7 @@ export default function RequirementDetailPage() {
                 style={{
                   color: colors.navy,
                   fontFamily:
-                    '"Cinzel", serif',
+                    'var(--font-display)',
                 }}
               >
                 Unable to load requirement
@@ -638,7 +711,7 @@ export default function RequirementDetailPage() {
                 style={{
                   color: colors.muted,
                   fontFamily:
-                    '"Fauna One", serif',
+                    'var(--font-body)',
                 }}
               >
                 {error}
@@ -650,7 +723,7 @@ export default function RequirementDetailPage() {
                 style={{
                   color: colors.purple,
                   fontFamily:
-                    '"Unica One", sans-serif',
+                    'var(--font-nav)',
                 }}
               >
                 <ArrowLeft size={15} />
@@ -678,7 +751,7 @@ export default function RequirementDetailPage() {
             style={{
               color: colors.purple,
               fontFamily:
-                '"Unica One", sans-serif',
+                'var(--font-nav)',
               letterSpacing: "0.04em",
             }}
           >
@@ -697,7 +770,7 @@ export default function RequirementDetailPage() {
             style={{
               color: colors.muted,
               fontFamily:
-                '"Fauna One", serif',
+                'var(--font-body)',
             }}
           >
             Requirement details
@@ -732,11 +805,40 @@ export default function RequirementDetailPage() {
                           `${colors.purple}12`,
                         color: colors.purple,
                         fontFamily:
-                          '"Unica One", sans-serif',
+                          'var(--font-nav)',
                       }}
                     >
-                      {requirement.category}
+                      {isMRSupportRequest
+                        ? isLegacyMRRequest
+                          ? `Legacy category: ${requirement.category}`
+                          : `Therapeutic area: ${requirement.category}`
+                        : requirement.category}
                     </span>
+
+                    {isMRSupportRequest && !isLegacyMRRequest && (
+                      <span
+                        className="rounded-full px-3 py-1 text-xs font-medium"
+                        style={{
+                          backgroundColor: `${colors.pink}12`,
+                          color: colors.pink,
+                          fontFamily: "var(--font-nav)",
+                        }}
+                      >
+                        {getMRSupportRequestLabel(requirement.requestType)}
+                      </span>
+                    )}
+                    {isLegacyMRRequest && (
+                      <span
+                        className="rounded-full px-3 py-1 text-xs font-medium"
+                        style={{
+                          backgroundColor: "#FFF4E5",
+                          color: "#8A5A00",
+                          fontFamily: "var(--font-nav)",
+                        }}
+                      >
+                        Legacy MR request
+                      </span>
+                    )}
 
                     {requirement.urgency && (
                       <span
@@ -753,7 +855,7 @@ export default function RequirementDetailPage() {
                               ? colors.pink
                               : colors.navy,
                           fontFamily:
-                            '"Unica One", sans-serif',
+                            'var(--font-nav)',
                         }}
                       >
                         {requirement.urgency}{" "}
@@ -769,7 +871,7 @@ export default function RequirementDetailPage() {
                             `${colors.coral}15`,
                           color: colors.navy,
                           fontFamily:
-                            '"Unica One", sans-serif',
+                            'var(--font-nav)',
                         }}
                       >
                         Seeking{" "}
@@ -785,7 +887,7 @@ export default function RequirementDetailPage() {
                     style={{
                       color: colors.navy,
                       fontFamily:
-                        '"Cinzel", serif',
+                        'var(--font-display)',
                     }}
                   >
                     {requirement.title}
@@ -798,7 +900,7 @@ export default function RequirementDetailPage() {
                         style={{
                           color: colors.muted,
                           fontFamily:
-                            '"Fauna One", serif',
+                            'var(--font-body)',
                         }}
                       >
                         <Clock3 size={13} />
@@ -820,7 +922,7 @@ export default function RequirementDetailPage() {
                           style={{
                             color: colors.muted,
                             fontFamily:
-                              '"Fauna One", serif',
+                              'var(--font-body)',
                           }}
                         >
                           <Pencil size={12} />
@@ -876,7 +978,7 @@ export default function RequirementDetailPage() {
                           color:
                             colors.navy,
                           fontFamily:
-                            '"Unica One", sans-serif',
+                            'var(--font-nav)',
                         }}
                       >
                         Looking for{" "}
@@ -891,13 +993,14 @@ export default function RequirementDetailPage() {
                           color:
                             colors.muted,
                           fontFamily:
-                            '"Fauna One", serif',
+                            'var(--font-body)',
                         }}
                       >
-                        This requirement is shown
-                        only to the selected business
-                        role. Matching profiles remain
-                        private to the requirement owner.
+                        {isLegacyMRRequest
+                          ? "This request predates the MR support format. It may describe a medicine order, which an MR cannot fulfill. The pharmacy should edit it to choose a therapeutic area and support type."
+                          : isMRSupportRequest
+                            ? "This professional support request is shown only to relevant Medical Representatives. It is not a request for medicine or stock supply."
+                            : "This requirement is shown only to the selected business role. Matching profiles remain private to the requirement owner."}
                       </p>
                     </div>
                   </div>
@@ -921,12 +1024,14 @@ export default function RequirementDetailPage() {
                       style={{
                         color: colors.navy,
                         fontFamily:
-                          '"Unica One", sans-serif',
+                          'var(--font-nav)',
                         letterSpacing:
                           "0.04em",
                       }}
                     >
-                      PROCUREMENT PROGRESS
+                      {isMRSupportRequest
+                        ? "SUPPORT REQUEST PROGRESS"
+                        : "PROCUREMENT PROGRESS"}
                     </p>
 
                     <p
@@ -934,11 +1039,12 @@ export default function RequirementDetailPage() {
                       style={{
                         color: colors.muted,
                         fontFamily:
-                          '"Fauna One", serif',
+                          'var(--font-body)',
                       }}
                     >
-                      Track this requirement from
-                      discovery to fulfilment.
+                      {isMRSupportRequest
+                        ? "Track the request from matching to support completion."
+                        : "Track this requirement from discovery to fulfilment."}
                     </p>
                   </div>
 
@@ -1004,7 +1110,7 @@ export default function RequirementDetailPage() {
                                       ? colors.purple
                                       : colors.navy,
                                   fontFamily:
-                                    '"Unica One", sans-serif',
+                                    'var(--font-nav)',
                                 }}
                               >
                                 {step.label}
@@ -1017,7 +1123,7 @@ export default function RequirementDetailPage() {
                                     color:
                                       colors.muted,
                                     fontFamily:
-                                      '"Fauna One", serif',
+                                      'var(--font-body)',
                                   }}
                                 >
                                   Current stage
@@ -1056,7 +1162,7 @@ export default function RequirementDetailPage() {
                       color:
                         colors.navy,
                       fontFamily:
-                        '"Unica One", sans-serif',
+                        'var(--font-nav)',
                       letterSpacing:
                         "0.04em",
                     }}
@@ -1071,7 +1177,7 @@ export default function RequirementDetailPage() {
                     color:
                       colors.navy,
                     fontFamily:
-                      '"Fauna One", serif',
+                      'var(--font-body)',
                   }}
                 >
                   {requirement.description}
@@ -1106,7 +1212,7 @@ export default function RequirementDetailPage() {
                             color:
                               colors.navy,
                             fontFamily:
-                              '"Unica One", sans-serif',
+                              'var(--font-nav)',
                           }}
                         >
                           Requirement management
@@ -1119,15 +1225,45 @@ export default function RequirementDetailPage() {
                           color:
                             colors.muted,
                           fontFamily:
-                            '"Fauna One", serif',
+                            'var(--font-body)',
                         }}
                       >
-                        Update procurement details
-                        or remove this requirement.
+                        {isMRSupportRequest
+                          ? "Review MR responses, shortlist a representative, mark support complete, or close the request."
+                          : "Update details, shortlist supplier responses, mark the requirement fulfilled, or close it."}
                       </p>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        loading={updatingRequirementStatus}
+                        disabled={updatingRequirementStatus}
+                        onClick={() => updateRequirementStatus("FULFILLED")}
+                        style={{ backgroundColor: colors.purple }}
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <CheckCircle2 size={15} />
+                          {isMRSupportRequest
+                            ? "Mark support complete"
+                            : "Mark fulfilled"}
+                        </span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        loading={updatingRequirementStatus}
+                        disabled={updatingRequirementStatus}
+                        onClick={() => updateRequirementStatus("CLOSED")}
+                        style={{
+                          backgroundColor: "#fff",
+                          color: colors.navy,
+                          border: `1px solid ${colors.border}`,
+                        }}
+                      >
+                        Close requirement
+                      </Button>
+
                       <Link
                         to={`/requirements/${id}/edit`}
                       >
@@ -1190,7 +1326,7 @@ export default function RequirementDetailPage() {
                       color:
                         "#b42318",
                       fontFamily:
-                        '"Fauna One", serif',
+                        'var(--font-body)',
                     }}
                   >
                     {error}
@@ -1209,16 +1345,20 @@ export default function RequirementDetailPage() {
                   <MessageCircle size={18} style={{ color: colors.purple }} />
                   <h2
                     className="text-xl font-semibold"
-                    style={{ color: colors.navy, fontFamily: '"Cinzel", serif' }}
+                    style={{ color: colors.navy, fontFamily: 'var(--font-display)' }}
                   >
-                    Supplier responses
+                    {isMRSupportRequest
+                      ? "Medical Representative responses"
+                      : "Supplier responses"}
                   </h2>
                 </div>
                 <p
                   className="mt-1 text-sm"
-                  style={{ color: colors.muted, fontFamily: '"Fauna One", serif' }}
+                  style={{ color: colors.muted, fontFamily: 'var(--font-body)' }}
                 >
-                  Replies from distributors and stockists are visible only to you.
+                  {isMRSupportRequest
+                    ? "Replies from Medical Representatives are visible only to you."
+                    : "Replies from suppliers are visible only to you."}
                 </p>
               </div>
               {responses && (
@@ -1245,7 +1385,9 @@ export default function RequirementDetailPage() {
             ) : responses.length === 0 ? (
               <Card className="border" style={{ backgroundColor: "#fff", borderColor: colors.border }}>
                 <p className="py-5 text-center text-sm" style={{ color: colors.muted }}>
-                  No suppliers have responded yet.
+                  {isMRSupportRequest
+                    ? "No Medical Representatives have responded yet."
+                    : "No suppliers have responded yet."}
                 </p>
               </Card>
             ) : (
@@ -1267,7 +1409,61 @@ export default function RequirementDetailPage() {
                           {format(new Date(response.createdAt), "d MMM yyyy, p")}
                         </p>
                       </div>
-                      <StatusBadge status={response.status} />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge status={response.status} />
+                        {["PENDING", "SHORTLISTED"].includes(response.status) && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            loading={updatingResponseId === response.id}
+                            disabled={Boolean(updatingResponseId)}
+                            onClick={() =>
+                              updateResponseStatus(
+                                response,
+                                response.status === "SHORTLISTED"
+                                  ? "PENDING"
+                                  : "SHORTLISTED"
+                              )
+                            }
+                            style={{
+                              backgroundColor:
+                                response.status === "SHORTLISTED"
+                                  ? "#fff"
+                                  : colors.purple,
+                              color:
+                                response.status === "SHORTLISTED"
+                                  ? colors.purple
+                                  : "#fff",
+                              border:
+                                response.status === "SHORTLISTED"
+                                  ? `1px solid ${colors.purple}40`
+                                  : "none",
+                            }}
+                          >
+                            {response.status === "SHORTLISTED"
+                              ? "Remove shortlist"
+                              : "Shortlist"}
+                          </Button>
+                        )}
+                        {response.responder?.connectionStatus === "ACCEPTED" ? (
+                          <span className="text-sm font-medium text-tealdeep">
+                            Connected
+                          </span>
+                        ) : response.responder?.connectionStatus === "PENDING" ? (
+                          <span className="text-xs text-[#8C8496]">
+                            Connection pending
+                          </span>
+                        ) : response.responder?.connectionStatus === "DECLINED" ? (
+                          <span className="text-xs text-[#8C8496]">
+                            Connection declined
+                          </span>
+                        ) : response.responder?.userId ? (
+                          <ConnectButton
+                            recipientUserId={response.responder.userId}
+                            recipientRole={response.responder.role}
+                          />
+                        ) : null}
+                      </div>
                     </div>
                     <p className="mt-3 whitespace-pre-wrap text-sm leading-6" style={{ color: colors.navy }}>
                       {response.message}
@@ -1302,7 +1498,7 @@ export default function RequirementDetailPage() {
                       color:
                         colors.navy,
                       fontFamily:
-                        '"Cinzel", serif',
+                        'var(--font-display)',
                     }}
                   >
                     Matched profiles
@@ -1315,15 +1511,16 @@ export default function RequirementDetailPage() {
                     color:
                       colors.muted,
                     fontFamily:
-                      '"Fauna One", serif',
+                      'var(--font-body)',
                   }}
                 >
                   Potential{" "}
                   {getTargetRoleLabel(
                     targetRole
                   ).toLowerCase()}{" "}
-                  matched to this procurement
-                  requirement.
+                  {isMRSupportRequest
+                    ? "matched to this pharmacy support request."
+                    : "matched to this procurement requirement."}
                 </p>
               </div>
 
@@ -1337,7 +1534,7 @@ export default function RequirementDetailPage() {
                       color:
                         colors.purple,
                       fontFamily:
-                        '"Unica One", sans-serif',
+                        'var(--font-nav)',
                     }}
                   >
                     {matches.length}{" "}
@@ -1382,7 +1579,7 @@ export default function RequirementDetailPage() {
                       color:
                         colors.navy,
                       fontFamily:
-                        '"Fauna One", serif',
+                        'var(--font-body)',
                     }}
                   />
 
@@ -1432,7 +1629,7 @@ export default function RequirementDetailPage() {
                       color:
                         colors.navy,
                       fontFamily:
-                        '"Unica One", sans-serif',
+                        'var(--font-nav)',
                     }}
                   >
                     Private matching workspace
@@ -1444,7 +1641,7 @@ export default function RequirementDetailPage() {
                       color:
                         colors.muted,
                       fontFamily:
-                        '"Fauna One", serif',
+                        'var(--font-body)',
                     }}
                   >
                     Only you, as the requirement owner,
@@ -1489,7 +1686,7 @@ export default function RequirementDetailPage() {
                       color:
                         colors.navy,
                       fontFamily:
-                        '"Cinzel", serif',
+                        'var(--font-display)',
                     }}
                   >
                     {search
@@ -1503,7 +1700,7 @@ export default function RequirementDetailPage() {
                       color:
                         colors.muted,
                       fontFamily:
-                        '"Fauna One", serif',
+                        'var(--font-body)',
                     }}
                   >
                     {search
@@ -1549,7 +1746,7 @@ export default function RequirementDetailPage() {
                                 color:
                                   "#fff",
                                 fontFamily:
-                                  '"Unica One", sans-serif',
+                                  'var(--font-nav)',
                               }}
                             >
                               {initials}
@@ -1565,7 +1762,7 @@ export default function RequirementDetailPage() {
                                     color:
                                       colors.navy,
                                     fontFamily:
-                                      '"Unica One", sans-serif',
+                                      'var(--font-nav)',
                                   }}
                                 >
                                   {getMatchTypeLabel(
@@ -1583,7 +1780,7 @@ export default function RequirementDetailPage() {
                                       color:
                                         colors.pink,
                                       fontFamily:
-                                        '"Unica One", sans-serif',
+                                        'var(--font-nav)',
                                     }}
                                   >
                                     {score}% match
@@ -1597,7 +1794,7 @@ export default function RequirementDetailPage() {
                                   color:
                                     colors.navy,
                                   fontFamily:
-                                    '"Fauna One", serif',
+                                    'var(--font-body)',
                                 }}
                               >
                                 {match.name ||
@@ -1635,7 +1832,7 @@ export default function RequirementDetailPage() {
                                     color:
                                       colors.muted,
                                     fontFamily:
-                                      '"Unica One", sans-serif',
+                                      'var(--font-nav)',
                                   }}
                                 >
                                   MATCH RELEVANCE
@@ -1647,7 +1844,7 @@ export default function RequirementDetailPage() {
                                     color:
                                       colors.purple,
                                     fontFamily:
-                                      '"Unica One", sans-serif',
+                                      'var(--font-nav)',
                                   }}
                                 >
                                   {score}%
@@ -1712,7 +1909,7 @@ export default function RequirementDetailPage() {
                                             color:
                                               colors.muted,
                                             fontFamily:
-                                              '"Fauna One", serif',
+                                              'var(--font-body)',
                                           }}
                                         >
                                           {
@@ -1737,6 +1934,9 @@ export default function RequirementDetailPage() {
                                 recipientUserId={
                                   match.userId
                                 }
+                                recipientRole={
+                                  match.targetType
+                                }
                               />
                             )}
 
@@ -1750,7 +1950,7 @@ export default function RequirementDetailPage() {
                                   color:
                                     colors.navy,
                                   fontFamily:
-                                    '"Unica One", sans-serif',
+                                    'var(--font-nav)',
                                 }}
                               >
                                 <MessageCircle
@@ -1772,7 +1972,7 @@ export default function RequirementDetailPage() {
                                 color:
                                   colors.purple,
                                 fontFamily:
-                                  '"Unica One", sans-serif',
+                                  'var(--font-nav)',
                               }}
                             >
                               View details
@@ -1827,12 +2027,14 @@ export default function RequirementDetailPage() {
                     color:
                       colors.navy,
                     fontFamily:
-                      '"Cinzel", serif',
+                      'var(--font-display)',
                   }}
                 >
                   {targetRole &&
                   currentUserRole === targetRole
-                    ? "Requirement available to your role"
+                    ? isMRSupportRequest
+                      ? "Pharmacy request for you"
+                      : "Requirement available to your role"
                     : "Requirement matching is private"}
                 </h2>
 
@@ -1842,19 +2044,25 @@ export default function RequirementDetailPage() {
                     color:
                       colors.muted,
                     fontFamily:
-                      '"Fauna One", serif',
+                      'var(--font-body)',
                   }}
                 >
                   {targetRole &&
                   currentUserRole === targetRole
-                    ? `This requirement is intended for ${getTargetRoleLabel(
-                        targetRole
-                      ).toLowerCase()}. Respond to the pharmacy with the supply capability or availability you can provide.`
+                    ? isLegacyMRRequest
+                      ? "This older request may describe medicine procurement. Ask the pharmacy to update it to a support request before responding."
+                      : isMRSupportRequest
+                        ? `This support request is intended for ${getTargetRoleLabel(
+                          targetRole
+                        ).toLowerCase()}. Respond with the product information or professional support you can provide.`
+                        : `This requirement is intended for ${getTargetRoleLabel(
+                            targetRole
+                          ).toLowerCase()}. Respond to the pharmacy with the supply capability or availability you can provide.`
                     : "Matching profiles, match scores and matching reasons are visible only to the requirement owner."}
                 </p>
-                {currentUserRole === "DISTRIBUTOR_STOCKIST" &&
+                {SUPPLIER_ROLES.includes(currentUserRole) &&
                   requirement.isTargetRole &&
-                  requirement.status === "OPEN" &&
+                  ["OPEN", "MATCHED"].includes(requirement.status) &&
                   (myResponse ? (
                     <div className="mt-6 w-full max-w-lg rounded-2xl border p-4 text-left" style={{ borderColor: colors.border }}>
                       <div className="flex items-center justify-between gap-3">
@@ -1865,6 +2073,19 @@ export default function RequirementDetailPage() {
                         {myResponse.message}
                       </p>
                     </div>
+                  ) : isLegacyMRRequest ? (
+                    <p
+                      className="mt-6 w-full max-w-lg rounded-2xl border px-4 py-3 text-left text-sm leading-6"
+                      style={{
+                        borderColor: "#E8C77A",
+                        backgroundColor: "#FFF9EC",
+                        color: "#755000",
+                      }}
+                    >
+                      This older request uses the previous format and cannot
+                      be answered. The pharmacy needs to edit it and choose a
+                      therapeutic area and support type first.
+                    </p>
                   ) : (
                     <form onSubmit={submitResponse} className="mt-6 w-full max-w-lg text-left">
                       <label htmlFor="requirement-response" className="mb-2 block text-sm font-semibold" style={{ color: colors.navy }}>
@@ -1878,7 +2099,11 @@ export default function RequirementDetailPage() {
                         rows={4}
                         value={responseMessage}
                         onChange={(event) => setResponseMessage(event.target.value)}
-                        placeholder="Share relevant product availability, service coverage, or ask a useful clarification."
+                        placeholder={
+                          isMRSupportRequest
+                            ? "Explain how you can provide the requested information or arrange a pharmacy visit. Do not offer medicine or stock supply."
+                            : "Share relevant product availability, service coverage, or ask a useful clarification."
+                        }
                       />
                       <p className="mt-2 text-xs" style={{ color: colors.muted }}>
                         Avoid sharing confidential pricing or patient information.
@@ -1927,10 +2152,12 @@ export default function RequirementDetailPage() {
                         color:
                           colors.coral,
                         fontFamily:
-                          '"Unica One", sans-serif',
+                          'var(--font-nav)',
                       }}
                     >
-                      NEXT PROCUREMENT STEP
+                      {isMRSupportRequest
+                        ? "NEXT SUPPORT STEP"
+                        : "NEXT PROCUREMENT STEP"}
                     </span>
                   </div>
 
@@ -1940,24 +2167,25 @@ export default function RequirementDetailPage() {
                       color:
                         "#fff",
                       fontFamily:
-                        '"Cinzel", serif',
+                        'var(--font-display)',
                     }}
                   >
-                    Connect with the right supplier.
+                    {isMRSupportRequest
+                      ? "Connect with the right representative."
+                      : "Connect with the right supplier."}
                   </h2>
 
                   <p
                     className="mt-2 text-sm leading-6"
                     style={{
-                      color:
-                        colors.muted,
+                      color: "#E9E2EA",
                       fontFamily:
-                        '"Fauna One", serif',
+                        'var(--font-body)',
                     }}
                   >
-                    Review matched profiles, connect with suitable
-                    businesses, then continue the conversation toward
-                    an appointment and procurement.
+                    {isMRSupportRequest
+                      ? "Review matched representatives, connect, and arrange a conversation or pharmacy visit for the requested support."
+                      : "Review matched profiles, connect with suitable businesses, then continue the conversation toward an appointment and procurement."}
                   </p>
                 </div>
 
@@ -2047,7 +2275,7 @@ export default function RequirementDetailPage() {
                         color:
                           "#fff",
                         fontFamily:
-                          '"Unica One", sans-serif',
+                          'var(--font-nav)',
                       }}
                     >
                       {getMatchInitials(
@@ -2062,7 +2290,7 @@ export default function RequirementDetailPage() {
                           color:
                             colors.muted,
                           fontFamily:
-                            '"Unica One", sans-serif',
+                            'var(--font-nav)',
                         }}
                       >
                         {getMatchTypeLabel(
@@ -2076,7 +2304,7 @@ export default function RequirementDetailPage() {
                           color:
                             colors.navy,
                           fontFamily:
-                            '"Cinzel", serif',
+                            'var(--font-display)',
                         }}
                       >
                         {selectedMatch.name ||
@@ -2121,7 +2349,7 @@ export default function RequirementDetailPage() {
                           color:
                             colors.navy,
                           fontFamily:
-                            '"Unica One", sans-serif',
+                            'var(--font-nav)',
                         }}
                       >
                         MATCH SCORE
@@ -2133,7 +2361,7 @@ export default function RequirementDetailPage() {
                           color:
                             colors.pink,
                           fontFamily:
-                            '"Cinzel", serif',
+                            'var(--font-display)',
                         }}
                       >
                         {getMatchScore(
@@ -2158,7 +2386,7 @@ export default function RequirementDetailPage() {
                           color:
                             colors.navy,
                           fontFamily:
-                            '"Unica One", sans-serif',
+                            'var(--font-nav)',
                         }}
                       >
                         WHY THIS PROFILE MATCHED
@@ -2189,7 +2417,7 @@ export default function RequirementDetailPage() {
                                   color:
                                     colors.muted,
                                   fontFamily:
-                                    '"Fauna One", serif',
+                                    'var(--font-body)',
                                 }}
                               >
                                 {reason}
@@ -2213,6 +2441,9 @@ export default function RequirementDetailPage() {
                       recipientUserId={
                         selectedMatch.userId
                       }
+                      recipientRole={
+                        selectedMatch.targetType
+                      }
                     />
                   )}
 
@@ -2231,7 +2462,7 @@ export default function RequirementDetailPage() {
                         color:
                           colors.navy,
                         fontFamily:
-                          '"Unica One", sans-serif',
+                          'var(--font-nav)',
                       }}
                     >
                       <MessageCircle
@@ -2253,7 +2484,7 @@ export default function RequirementDetailPage() {
                       color:
                         colors.muted,
                       fontFamily:
-                        '"Unica One", sans-serif',
+                        'var(--font-nav)',
                     }}
                   >
                     Close
@@ -2304,7 +2535,7 @@ export default function RequirementDetailPage() {
                 color:
                   colors.navy,
                 fontFamily:
-                  '"Cinzel", serif',
+                  'var(--font-display)',
               }}
             >
               Delete requirement?
@@ -2316,12 +2547,12 @@ export default function RequirementDetailPage() {
                 color:
                   colors.muted,
                 fontFamily:
-                  '"Fauna One", serif',
+                  'var(--font-body)',
               }}
             >
-              This will permanently remove this
-              procurement requirement. This action
-              cannot be undone.
+              {isMRSupportRequest
+                ? "This will permanently remove this support request. This action cannot be undone."
+                : "This will permanently remove this procurement requirement. This action cannot be undone."}
             </p>
 
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

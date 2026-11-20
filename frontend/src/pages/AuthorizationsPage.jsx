@@ -20,6 +20,21 @@ function toggleValue(values, value) {
     : [...values, value];
 }
 
+function isCompanyVerified(company) {
+  return (
+    company.businessVerified &&
+    company.verificationStatus === "VERIFIED"
+  );
+}
+
+function companyVerificationLabel(company) {
+  if (isCompanyVerified(company)) return "";
+  if (company.verificationStatus === "PENDING") return "Verification pending";
+  if (company.verificationStatus === "REJECTED") return "Verification needs attention";
+  if (company.verificationStatus === "EXPIRED") return "Verification expired";
+  return "Not verified";
+}
+
 export default function AuthorizationsPage() {
   const user = useAuthStore((state) => state.user);
   const isMR = user?.role === "MR";
@@ -64,14 +79,7 @@ export default function AuthorizationsPage() {
       http.get("/profiles/mr/me"),
     ])
       .then(([companyRows, documentRows, profile]) => {
-        const verifiedCompanies = (
-          Array.isArray(companyRows) ? companyRows : []
-        ).filter(
-          (company) =>
-            company.businessVerified &&
-            company.verificationStatus === "VERIFIED"
-        );
-        setCompanies(verifiedCompanies);
+        setCompanies(Array.isArray(companyRows) ? companyRows : []);
         setDocuments(
           (Array.isArray(documentRows) ? documentRows : []).filter(
             (document) =>
@@ -201,137 +209,154 @@ export default function AuthorizationsPage() {
           </h2>
           {companies.length === 0 ? (
             <p className="mt-3 text-sm text-taupe">
-              No verified pharmaceutical companies are available yet.
-            </p>
-          ) : companyId && companyDocuments.length === 0 ? (
-            <p className="mt-3 text-sm text-taupe">
-              First upload an authorization letter for a verified company and
-              wait for admin review.{" "}
-              <Link to="/verification" className="font-medium text-purple underline">
-                Open document verification
-              </Link>
+              No pharmaceutical companies are registered on the platform yet.
             </p>
           ) : (
-            <form onSubmit={requestAuthorization} className="mt-5 space-y-5">
+            <div className="mt-5 space-y-5">
               <div>
                 <Label>Company</Label>
                 <Select
-                  required
                   value={companyId}
                   onChange={(event) => {
                     setCompanyId(event.target.value);
                     setDocumentId("");
                   }}
                 >
-                  <option value="">Select a company</option>
+                  <option value="">Select a verified company</option>
                   {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
+                    <option
+                      key={company.id}
+                      value={company.id}
+                      disabled={!isCompanyVerified(company)}
+                    >
                       {company.companyName}
+                      {!isCompanyVerified(company)
+                        ? ` (${companyVerificationLabel(company)})`
+                        : ""}
                     </option>
                   ))}
                 </Select>
               </div>
-              <div>
-                <Label>Approved authorization document</Label>
-                <Select
-                  required
-                  value={documentId}
-                  onChange={(event) => setDocumentId(event.target.value)}
-                >
-                  <option value="">Select a reviewed document</option>
-                  {companyDocuments.map((document) => (
-                    <option key={document.id} value={document.id}>
-                      Submitted {new Date(document.createdAt).toLocaleDateString()}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label>Authorized product categories</Label>
-                <div className="flex flex-wrap gap-2">
-                  {PRODUCT_CATEGORIES.map((category) => {
-                    const selected = categories.includes(category);
-                    return (
-                      <button
-                        key={category}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() =>
-                          setCategories((current) =>
-                            toggleValue(current, category)
-                          )
-                        }
-                        className={`rounded-full border px-3 py-2 text-xs ${
-                          selected
-                            ? "border-purple bg-purple/10 text-purple"
-                            : "border-taupe/30 text-taupedark"
-                        }`}
-                      >
-                        {category}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
-                <Label>Authorized territories</Label>
-                {territories.length === 0 ? (
-                  <p className="text-sm text-red-600">
-                    Add territories to your MR profile before requesting
-                    authorization.
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {territories.map((territory) => {
-                      const selected =
-                        authorizedTerritories.includes(territory);
-                      return (
-                        <button
-                          key={territory}
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() =>
-                            setAuthorizedTerritories((current) =>
-                              toggleValue(current, territory)
-                            )
-                          }
-                          className={`rounded-full border px-3 py-2 text-xs ${
-                            selected
-                              ? "border-purple bg-purple/10 text-purple"
-                              : "border-taupe/30 text-taupedark"
-                          }`}
-                        >
-                          {territory}
-                        </button>
-                      );
-                    })}
+              {companies.every((company) => !isCompanyVerified(company)) && (
+                <p className="text-sm text-taupe">
+                  Registered companies appear here, but can only be selected
+                  after PharmUnis verifies their business and registration.
+                </p>
+              )}
+              {companyId && companyDocuments.length === 0 && (
+                <p className="text-sm text-taupe">
+                  First upload an authorization letter for this verified
+                  company and wait for admin review.{" "}
+                  <Link to="/verification" className="font-medium text-purple underline">
+                    Open document verification
+                  </Link>
+                </p>
+              )}
+              {companyId && companyDocuments.length > 0 && (
+                <form onSubmit={requestAuthorization} className="space-y-5">
+                  <div>
+                    <Label>Approved authorization document</Label>
+                    <Select
+                      required
+                      value={documentId}
+                      onChange={(event) => setDocumentId(event.target.value)}
+                    >
+                      <option value="">Select a reviewed document</option>
+                      {companyDocuments.map((document) => (
+                        <option key={document.id} value={document.id}>
+                          Submitted {new Date(document.createdAt).toLocaleDateString()}
+                        </option>
+                      ))}
+                    </Select>
                   </div>
-                )}
-              </div>
-              <div className="max-w-xs">
-                <Label>Authorization expiry</Label>
-                <Input
-                  type="date"
-                  required
-                  min={new Date().toISOString().slice(0, 10)}
-                  value={expiresAt}
-                  onChange={(event) => setExpiresAt(event.target.value)}
-                />
-              </div>
-              <Button
-                type="submit"
-                loading={busy}
-                disabled={
-                  !companyId ||
-                  !documentId ||
-                  categories.length === 0 ||
-                  authorizedTerritories.length === 0 ||
-                  !expiresAt
-                }
-              >
-                Submit authorization request
-              </Button>
-            </form>
+                  <div>
+                    <Label>Authorized product categories</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {PRODUCT_CATEGORIES.map((category) => {
+                        const selected = categories.includes(category);
+                        return (
+                          <button
+                            key={category}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() =>
+                              setCategories((current) =>
+                                toggleValue(current, category)
+                              )
+                            }
+                            className={`rounded-full border px-3 py-2 text-xs ${
+                              selected
+                                ? "border-purple bg-purple/10 text-purple"
+                                : "border-taupe/30 text-taupedark"
+                            }`}
+                          >
+                            {category}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Authorized territories</Label>
+                    {territories.length === 0 ? (
+                      <p className="text-sm text-red-600">
+                        Add territories to your MR profile before requesting
+                        authorization.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {territories.map((territory) => {
+                          const selected =
+                            authorizedTerritories.includes(territory);
+                          return (
+                            <button
+                              key={territory}
+                              type="button"
+                              aria-pressed={selected}
+                              onClick={() =>
+                                setAuthorizedTerritories((current) =>
+                                  toggleValue(current, territory)
+                                )
+                              }
+                              className={`rounded-full border px-3 py-2 text-xs ${
+                                selected
+                                  ? "border-purple bg-purple/10 text-purple"
+                                  : "border-taupe/30 text-taupedark"
+                              }`}
+                            >
+                              {territory}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div className="max-w-xs">
+                    <Label>Authorization expiry</Label>
+                    <Input
+                      type="date"
+                      required
+                      min={new Date().toISOString().slice(0, 10)}
+                      value={expiresAt}
+                      onChange={(event) => setExpiresAt(event.target.value)}
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    loading={busy}
+                    disabled={
+                      !companyId ||
+                      !documentId ||
+                      categories.length === 0 ||
+                      authorizedTerritories.length === 0 ||
+                      !expiresAt
+                    }
+                  >
+                    Submit authorization request
+                  </Button>
+                </form>
+              )}
+            </div>
           )}
         </Card>
       )}

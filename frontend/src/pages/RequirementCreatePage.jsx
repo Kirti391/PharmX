@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -12,9 +12,14 @@ import {
 } from "lucide-react";
 
 import { http } from "../lib/api";
+import { useAuthStore } from "../store/authStore";
 import { Card, Button } from "../components/ui";
+import {
+  MR_SUPPORT_REQUEST_OPTIONS,
+  PRODUCT_CATEGORIES as THERAPEUTIC_AREAS,
+} from "../lib/constants";
 
-const PRODUCT_CATEGORIES = [
+const PROCUREMENT_CATEGORIES = [
   "TABLETS",
   "CAPSULES",
   "SYRUPS",
@@ -39,7 +44,7 @@ const SUPPLIER_TYPES = [
     value: "MR",
     label: "Medical Representatives",
     description:
-      "Share your requirement with relevant medical representatives.",
+      "Request product information, a pharmacy visit, or other professional support. MRs do not supply medicine stock.",
     icon: Users,
   },
   {
@@ -55,17 +60,17 @@ const URGENCY_OPTIONS = [
   {
     value: "LOW",
     label: "Low",
-    description: "No immediate requirement",
+    description: "No immediate need",
   },
   {
     value: "NORMAL",
     label: "Normal",
-    description: "Needed within the usual procurement cycle",
+    description: "Needed within the usual timeframe",
   },
   {
     value: "HIGH",
     label: "High",
-    description: "Priority procurement requirement",
+    description: "Priority request",
   },
 ];
 
@@ -109,19 +114,54 @@ function getRequirementFromResponse(result) {
 
 export default function RequirementCreatePage() {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const isDistributorRole =
+    user?.role === "DISTRIBUTOR_STOCKIST" ||
+    user?.role === "DISTRIBUTOR" ||
+    user?.role === "STOCKIST";
+  const canCreateRequirement =
+    user?.role === "PHARMACY" || isDistributorRole;
+  const isCompanyRole =
+    user?.role === "PHARMA_COMPANY" || user?.role === "COMPANY";
 
   const [category, setCategory] = useState(
-    PRODUCT_CATEGORIES?.[0] || ""
+    PROCUREMENT_CATEGORIES?.[0] || ""
   );
+  const [requestType, setRequestType] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [urgency, setUrgency] = useState("NORMAL");
   const [supplierType, setSupplierType] = useState(
-    "DISTRIBUTOR_STOCKIST"
+    isDistributorRole ? "COMPANY" : "DISTRIBUTOR_STOCKIST"
   );
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const isMRSupportRequest = supplierType === "MR";
+  const categoryOptions = isMRSupportRequest
+    ? THERAPEUTIC_AREAS
+    : PROCUREMENT_CATEGORIES;
+  const availableSupplierTypes = isDistributorRole
+    ? SUPPLIER_TYPES.filter(
+        (item) => item.value === "COMPANY"
+      )
+    : SUPPLIER_TYPES;
+
+  function handleSupplierTypeChange(nextSupplierType) {
+    if (nextSupplierType === supplierType) return;
+
+    setSupplierType(nextSupplierType);
+    setCategory(
+      nextSupplierType === "MR"
+        ? THERAPEUTIC_AREAS[0]
+        : PROCUREMENT_CATEGORIES[0]
+    );
+    setRequestType(
+      nextSupplierType === "MR"
+        ? MR_SUPPORT_REQUEST_OPTIONS[0].value
+        : ""
+    );
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -132,7 +172,16 @@ export default function RequirementCreatePage() {
     const cleanDescription = description.trim();
 
     if (!category) {
-      setError("Please select a product category.");
+      setError(
+        isMRSupportRequest
+          ? "Please select a therapeutic area."
+          : "Please select a product category."
+      );
+      return;
+    }
+
+    if (isMRSupportRequest && !requestType) {
+      setError("Please select the type of support you need.");
       return;
     }
 
@@ -161,6 +210,7 @@ export default function RequirementCreatePage() {
         title: cleanTitle,
         description: cleanDescription,
         urgency,
+        ...(isMRSupportRequest ? { requestType } : {}),
 
         // Backend maps this to requirement.targetRole.
         supplierType,
@@ -211,6 +261,15 @@ export default function RequirementCreatePage() {
     }
   }
 
+  if (user && !canCreateRequirement) {
+    return (
+      <Navigate
+        to={isCompanyRole ? "/opportunities" : "/requirements"}
+        replace
+      />
+    );
+  }
+
   return (
     <div className="min-h-full space-y-7">
       {/* Header */}
@@ -230,13 +289,15 @@ export default function RequirementCreatePage() {
 
           <div>
             <h1 className="font-['Cinzel'] text-2xl font-semibold text-[#2A1B3D] sm:text-3xl">
-              Create Requirement
+              {isMRSupportRequest
+                ? "Request MR Support"
+                : "Create Requirement"}
             </h1>
 
             <p className="mt-1.5 max-w-2xl font-['Fauna_One'] text-xs leading-6 text-[#6E6658]">
-              Tell the PharmUnis network what your pharmacy needs.
-              Select the supplier type you want to reach, and your
-              requirement will be matched only with relevant profiles.
+              {isMRSupportRequest
+                ? "Ask a Medical Representative for product information, a pharmacy visit, or other professional support. Medicine and stock orders should be sent to a company or distributor."
+                : "Tell the PharmUnis network what your pharmacy needs. Select the supplier type you want to reach, and your requirement will be matched only with relevant profiles."}
             </p>
           </div>
         </div>
@@ -254,13 +315,16 @@ export default function RequirementCreatePage() {
                 />
 
                 <h2 className="font-['Cinzel'] text-base font-semibold text-[#2A1B3D]">
-                  Requirement details
+                  {isMRSupportRequest
+                    ? "Support request details"
+                    : "Requirement details"}
                 </h2>
               </div>
 
               <p className="mt-1 text-xs text-[#8C8496]">
-                Provide enough information for the selected supplier
-                type to understand what you need.
+                {isMRSupportRequest
+                  ? "Select the therapeutic area and explain what support would help your pharmacy."
+                  : "Provide enough information for the selected supplier type to understand what you need."}
               </p>
             </div>
 
@@ -269,9 +333,11 @@ export default function RequirementCreatePage() {
               <div>
                 <label
                   htmlFor="category"
-                  className="mb-2 block font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D]"
+                  className="mb-2 block font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]"
                 >
-                  Product category
+                  {isMRSupportRequest
+                    ? "Therapeutic area"
+                    : "Product category"}
                 </label>
 
                 <select
@@ -281,7 +347,7 @@ export default function RequirementCreatePage() {
                   disabled={loading}
                   className="w-full rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {PRODUCT_CATEGORIES?.map((item) => (
+                  {categoryOptions.map((item) => (
                     <option key={item} value={item}>
                       {item}
                     </option>
@@ -289,13 +355,38 @@ export default function RequirementCreatePage() {
                 </select>
               </div>
 
+              {isMRSupportRequest && (
+                <div>
+                  <label
+                    htmlFor="requestType"
+                    className="mb-2 block font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]"
+                  >
+                    Type of support
+                  </label>
+
+                  <select
+                    id="requestType"
+                    value={requestType}
+                    onChange={(event) => setRequestType(event.target.value)}
+                    disabled={loading}
+                    className="w-full rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {MR_SUPPORT_REQUEST_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {/* Title */}
               <div>
                 <label
                   htmlFor="title"
-                  className="mb-2 block font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D]"
+                  className="mb-2 block font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]"
                 >
-                  Requirement title
+                  {isMRSupportRequest ? "Request title" : "Requirement title"}
                 </label>
 
                 <input
@@ -304,7 +395,11 @@ export default function RequirementCreatePage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   disabled={loading}
-                  placeholder="e.g. Monthly requirement for cardiac medicines"
+                  placeholder={
+                    isMRSupportRequest
+                      ? "e.g. Product information meeting for cardiology"
+                      : "e.g. Monthly requirement for cardiac medicines"
+                  }
                   className="w-full rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm text-[#2A1B3D] outline-none transition placeholder:text-[#9A929F] focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
@@ -313,9 +408,11 @@ export default function RequirementCreatePage() {
               <div>
                 <label
                   htmlFor="description"
-                  className="mb-2 block font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D]"
+                  className="mb-2 block font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]"
                 >
-                  Requirement description
+                  {isMRSupportRequest
+                    ? "Support needed"
+                    : "Requirement description"}
                 </label>
 
                 <textarea
@@ -324,7 +421,11 @@ export default function RequirementCreatePage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={loading}
-                  placeholder="Describe the products, approximate quantity, preferred brands, delivery requirements, or any other useful information..."
+                  placeholder={
+                    isMRSupportRequest
+                      ? "Describe the product information, discussion, or pharmacy visit you need. Do not use this request to order medicines or stock."
+                      : "Describe the products, approximate quantity, preferred brands, delivery requirements, or any other useful information..."
+                  }
                   className="w-full resize-none rounded-xl border border-[#E5DEE7] bg-[#FCFAF8] px-4 py-3 font-['Fauna_One'] text-sm leading-6 text-[#2A1B3D] outline-none transition placeholder:text-[#9A929F] focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10 disabled:cursor-not-allowed disabled:opacity-60"
                 />
 
@@ -335,7 +436,7 @@ export default function RequirementCreatePage() {
 
               {/* Urgency */}
               <div>
-                <label className="mb-3 block font-['Unica_One'] text-sm uppercase tracking-wide text-[#2A1B3D]">
+                <label className="mb-3 block font-['Philosopher'] text-sm uppercase tracking-wide text-[#2A1B3D]">
                   Urgency
                 </label>
 
@@ -357,7 +458,7 @@ export default function RequirementCreatePage() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span
-                            className={`font-['Unica_One'] text-sm uppercase ${
+                            className={`font-['Philosopher'] text-sm uppercase ${
                               active
                                 ? "text-[#D83F87]"
                                 : "text-[#2A1B3D]"
@@ -394,7 +495,7 @@ export default function RequirementCreatePage() {
               <div className="flex flex-col-reverse gap-3 border-t border-[#E9E6EC] pt-6 sm:flex-row sm:justify-end">
                 <Link
                   to="/requirements"
-                  className={`inline-flex items-center justify-center rounded-full border border-[#E9E2EA] px-5 py-3 font-['Unica_One'] text-[10px] uppercase tracking-wide text-[#2A1B3D] transition hover:bg-[#FCFAF8] ${
+                  className={`inline-flex items-center justify-center rounded-full border border-[#E9E2EA] px-5 py-3 font-['Philosopher'] text-[10px] uppercase tracking-wide text-[#2A1B3D] transition hover:bg-[#FCFAF8] ${
                     loading
                       ? "pointer-events-none opacity-50"
                       : ""
@@ -410,7 +511,9 @@ export default function RequirementCreatePage() {
                   className="inline-flex items-center justify-center gap-2"
                 >
                   <Send size={16} />
-                  Create requirement
+                  {isMRSupportRequest
+                    ? "Send support request"
+                    : "Create requirement"}
                 </Button>
               </div>
             </div>
@@ -431,13 +534,13 @@ export default function RequirementCreatePage() {
               </div>
 
               <p className="mt-2 font-['Fauna_One'] text-xs leading-5 text-[#A4B3B6]">
-                Select the supplier role you want this requirement
-                to reach. Matching is restricted to the selected
-                category.
+                Select who should receive this request. Medicine and stock
+                orders go to companies or distributors; MR requests are for
+                professional support.
               </p>
 
               <div className="mt-4 space-y-3">
-                {SUPPLIER_TYPES.map((item) => {
+                {availableSupplierTypes.map((item) => {
                   const Icon = item.icon;
                   const active = supplierType === item.value;
 
@@ -446,7 +549,7 @@ export default function RequirementCreatePage() {
                       key={item.value}
                       type="button"
                       disabled={loading}
-                      onClick={() => setSupplierType(item.value)}
+                      onClick={() => handleSupplierTypeChange(item.value)}
                       className={`w-full rounded-xl border p-3 text-left transition-all ${
                         active
                           ? "border-[#D83F87] bg-[#D83F87]/5"
@@ -466,7 +569,7 @@ export default function RequirementCreatePage() {
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-['Unica_One'] text-xs uppercase tracking-wide text-[#2A1B3D]">
+                            <span className="font-['Philosopher'] text-xs uppercase tracking-wide text-[#2A1B3D]">
                               {item.label}
                             </span>
 
@@ -490,28 +593,11 @@ export default function RequirementCreatePage() {
 
               <div className="mt-4 rounded-xl bg-[#F8F7F9] p-3">
                 <p className="font-['Fauna_One'] text-[11px] leading-5 text-[#A4B3B6]">
-                  Only profiles belonging to the selected supplier
-                  type should be considered for this requirement.
-                  Matching profiles and match details remain private
-                  to the pharmacy that created the requirement.
+                  {isMRSupportRequest
+                    ? "Medical Representatives are matched using the selected therapeutic area and their territory. This request is for professional support, not medicine supply."
+                    : "Only profiles belonging to the selected supplier type should be considered for this requirement. Matching profiles and match details remain private to the pharmacy that created the requirement."}
                 </p>
               </div>
-            </Card>
-
-            <Card className="border-[#E9E6EC] bg-[#2A1B3D] shadow-sm">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-[#E98074]">
-                <Sparkles size={17} />
-              </div>
-
-              <h3 className="mt-4 font-['Cinzel'] text-base font-semibold text-white">
-                Procurement made simpler
-              </h3>
-
-              <p className="mt-2 font-['Fauna_One'] text-xs leading-6 text-white/60">
-                Create the requirement once. Use responses,
-                connections, appointments and messages to move the
-                procurement journey forward.
-              </p>
             </Card>
           </div>
         </div>

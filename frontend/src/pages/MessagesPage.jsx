@@ -156,7 +156,7 @@ export default function MessagesPage() {
             <div className="divide-y" style={{ borderColor: COLORS.line }}>
               {filteredConversations.map((conversation) => {
                 const participant = conversation.otherParticipant;
-                const name = participant?.name || "PharmX member";
+                const name = participant?.name || "PharmUnis member";
                 return (
                   <Link
                     key={conversation.id}

@@ -59,6 +59,17 @@ companyAuthorizationSchema.index({
   status: 1,
 });
 
+companyAuthorizationSchema.index(
+  { companyId: 1, mrUserId: 1 },
+  {
+    name: "uniq_current_company_authorization_per_mr",
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ["PENDING", "ACTIVE"] },
+    },
+  }
+);
+
 module.exports = mongoose.model(
   "CompanyAuthorization",
   companyAuthorizationSchema

@@ -96,21 +96,21 @@ const doctorProfileSchema = new mongoose.Schema(
     communicationModes: {
       type: [String],
       enum: ["VIDEO", "PHYSICAL"],
-      default: [],
+      default: ["VIDEO"],
     },
 
     appointmentDurationMinutes: {
       type: Number,
       min: 5,
-      max: 240,
+      max: 60,
       default: 15,
     },
 
     maximumRequestsPerWeek: {
       type: Number,
-      min: 1,
-      max: 50,
-      default: 5,
+      min: 0,
+      max: 20,
+      default: 3,
     },
 
     blockedUserIds: [

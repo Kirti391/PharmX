@@ -10,7 +10,11 @@ import { initials, partnerOf, partnerRoleOf } from "./dashboardData";
    The pharmacy's newest accepted professional connections.
 ========================================================= */
 
-export function RecentConnectionsRail({ connections = [] }) {
+export function RecentConnectionsRail({
+  connections = [],
+  discoverHref = "/discover/companies",
+  emptyMessage = "No connections yet. Discover verified companies, pharmacies and distributors to start building your professional network.",
+}) {
   return (
     <section
       className="rounded-[22px] border bg-white p-5 shadow-[0_10px_30px_rgba(42,27,61,0.04)] sm:p-6"
@@ -38,8 +42,7 @@ export function RecentConnectionsRail({ connections = [] }) {
 
       {connections.length === 0 ? (
         <EmptyRow icon={Users}>
-          No connections yet. Discover companies and medical
-          representatives to start building your network.
+          {emptyMessage}
         </EmptyRow>
       ) : (
         <div className="mt-3">
@@ -87,7 +90,7 @@ export function RecentConnectionsRail({ connections = [] }) {
           })}
 
           <Link
-            to="/discover/companies"
+            to={discoverHref}
             className="mt-4 inline-flex items-center gap-2 font-nav text-[9px] uppercase tracking-[0.14em] transition-colors hover:text-[#44318D]"
             style={{ color: SURFACE.purple }}
           >

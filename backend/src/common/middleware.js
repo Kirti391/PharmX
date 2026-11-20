@@ -35,7 +35,7 @@ function requireAuth(req, res, next) {
           res,
           403,
           "ACCOUNT_RESTRICTED",
-          "This account is not active. Contact PharmX support for assistance."
+          "This account is not active. Contact PharmUnis support for assistance."
         );
       }
       req.user = { ...payload, role: normalizeRole(user.role) };

@@ -2,17 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
+  Archive,
   Building2,
   BriefcaseBusiness,
   ChevronRight,
   ClipboardList,
   MapPin,
   Package,
-  Store,
+  Pencil,
+  RotateCcw,
+  Trash2,
   UserRound,
 } from "lucide-react";
 
-import { http } from "../lib/api";
+import { apiErrorMessage, http } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
 import {
   Card,
@@ -92,9 +95,11 @@ export default function OpportunitiesPage() {
   const role = normalizeRole(user?.role);
   const isPharmacy = role === "PHARMACY";
   const isCompany = role === "COMPANY" || role === "PHARMA_COMPANY";
+  const canApply = role === "MR" || role === "INDEPENDENT_MR";
 
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
+  const [busyId, setBusyId] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -103,7 +108,11 @@ export default function OpportunitiesPage() {
       setError(null);
 
       try {
-        const result = await http.get("/opportunities?status=OPEN");
+        const result = await http.get(
+          isCompany
+            ? "/opportunities?status=ALL"
+            : "/opportunities?status=OPEN"
+        );
 
         if (!mounted) return;
 
@@ -112,7 +121,7 @@ export default function OpportunitiesPage() {
         if (!mounted) return;
 
         setItems([]);
-        setError("Unable to load opportunities right now.");
+        setError(apiErrorMessage(err, "Unable to load opportunities right now."));
       }
     }
 
@@ -121,17 +130,71 @@ export default function OpportunitiesPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isCompany]);
 
-  const pageTitle = isPharmacy ? "Responses" : "Opportunities";
+  async function changeStatus(opportunity) {
+    const status = opportunity.status === "OPEN" ? "CLOSED" : "OPEN";
+    setBusyId(opportunity.id);
+    setError(null);
+    try {
+      const updated = await http.patch(`/opportunities/${opportunity.id}`, {
+        status,
+      });
+      setItems((current) =>
+        current?.map((item) =>
+          item.id === opportunity.id ? { ...item, ...updated } : item
+        ) ?? []
+      );
+    } catch (requestError) {
+      setError(
+        apiErrorMessage(requestError, "Unable to update this opportunity.")
+      );
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function deleteOpportunity(opportunity) {
+    if (
+      !window.confirm(
+        `Delete "${opportunity.title}"? This will also remove its applications.`
+      )
+    ) {
+      return;
+    }
+    setBusyId(opportunity.id);
+    setError(null);
+    try {
+      await http.delete(`/opportunities/${opportunity.id}`);
+      setItems((current) =>
+        current?.filter((item) => item.id !== opportunity.id) ?? []
+      );
+    } catch (requestError) {
+      setError(
+        apiErrorMessage(requestError, "Unable to delete this opportunity.")
+      );
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  const pageTitle = isPharmacy
+    ? "Responses"
+    : isCompany
+      ? "My company opportunities"
+      : "Opportunities";
 
   const pageDescription = isPharmacy
     ? "Review relevant supplier opportunities and responses connected to your procurement needs."
-    : "Discover relevant business opportunities across the PharmUnis network.";
+    : isCompany
+      ? "Manage the opportunities your company has posted, review their status, and keep each description up to date."
+      : "Discover relevant business opportunities across the PharmUnis network.";
 
   const emptyTitle = isPharmacy
     ? "No responses yet"
-    : "No open opportunities right now";
+    : isCompany
+      ? "No company opportunities yet"
+      : "No open opportunities right now";
 
   const emptySubtitle = isPharmacy
     ? "Responses will appear here when relevant opportunities become available."
@@ -142,8 +205,10 @@ export default function OpportunitiesPage() {
   const visibleItems = useMemo(() => {
     if (!Array.isArray(items)) return [];
 
-    return items;
-  }, [items]);
+    return isCompany
+      ? items.filter((item) => item.isOwner === true)
+      : items;
+  }, [items, isCompany]);
 
   return (
     <div className="space-y-7">
@@ -164,7 +229,11 @@ export default function OpportunitiesPage() {
               text-primary
             "
           >
-            {isPharmacy ? "Requirement Responses" : "Professional Network"}
+            {isPharmacy
+              ? "Requirement Responses"
+              : isCompany
+                ? "Company pipeline"
+                : "Professional Network"}
           </div>
 
           <h1
@@ -382,27 +451,10 @@ export default function OpportunitiesPage() {
               : [];
 
             return (
-              <Link
+              <Card
                 key={opportunity.id}
-                to={`/opportunities/${opportunity.id}`}
-                className="group block h-full"
+                className="group relative h-full overflow-hidden border-[#E9E6EC] bg-white p-0 shadow-[0_8px_30px_rgba(42,27,61,0.045)] transition-all duration-300 hover:-translate-y-1 hover:border-[#D83F87]/30 hover:shadow-[0_16px_40px_rgba(42,27,61,0.09)]"
               >
-                <Card
-                  className="
-                    relative
-                    h-full
-                    overflow-hidden
-                    border-[#E9E6EC]
-                    bg-white
-                    shadow-[0_8px_30px_rgba(42,27,61,0.045)]
-                    transition-all
-                    duration-300
-                    group-hover:-translate-y-1
-                    group-hover:border-[#D83F87]/30
-                    group-hover:shadow-[0_16px_40px_rgba(42,27,61,0.09)]
-                  "
-                >
-
                   {/* Accent line */}
 
                   <div
@@ -476,15 +528,60 @@ export default function OpportunitiesPage() {
 
                       </div>
 
-                      <StatusBadge status={opportunity?.status} />
+                      <div className="flex flex-col items-end gap-2">
+                        <StatusBadge status={opportunity?.status} />
+                        {canApply && opportunity?.applicationStatus && (
+                          <span className="rounded-full bg-[#EDF6F0] px-2.5 py-1 text-xs font-medium text-[#32734D]">
+                            Applied
+                          </span>
+                        )}
+                        {isCompany && opportunity.isOwner && (
+                          <div className="flex items-center gap-1">
+                            <Link
+                              to={`/opportunities/${opportunity.id}/edit`}
+                              aria-label={`Edit ${opportunity.title}`}
+                              title="Edit opportunity"
+                              className="rounded-lg p-2 text-[#44318D] transition hover:bg-[#EFEBF9]"
+                            >
+                              <Pencil size={15} />
+                            </Link>
+                            <button
+                              type="button"
+                              disabled={busyId === opportunity.id}
+                              onClick={() => changeStatus(opportunity)}
+                              aria-label={`${opportunity.status === "OPEN" ? "Close" : "Reopen"} ${opportunity.title}`}
+                              title={opportunity.status === "OPEN" ? "Close opportunity" : "Reopen opportunity"}
+                              className="rounded-lg p-2 text-[#44318D] transition hover:bg-[#EFEBF9] disabled:opacity-50"
+                            >
+                              {opportunity.status === "OPEN" ? (
+                                <Archive size={15} />
+                              ) : (
+                                <RotateCcw size={15} />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busyId === opportunity.id}
+                              onClick={() => deleteOpportunity(opportunity)}
+                              aria-label={`Delete ${opportunity.title}`}
+                              title="Delete opportunity"
+                              className="rounded-lg p-2 text-[#A34F54] transition hover:bg-red-50 disabled:opacity-50"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
 
                     </div>
 
 
                     {/* Title */}
 
-                    <h3
+                    <Link
+                      to={`/opportunities/${opportunity.id}`}
                       className="
+                        block
                         mt-5
                         font-display
                         text-lg
@@ -496,7 +593,7 @@ export default function OpportunitiesPage() {
                       "
                     >
                       {opportunity?.title || "Untitled opportunity"}
-                    </h3>
+                    </Link>
 
 
                     {/* Description */}
@@ -505,7 +602,8 @@ export default function OpportunitiesPage() {
                       <p
                         className="
                           mt-2
-                          line-clamp-3
+                          line-clamp-5
+                          whitespace-pre-line
                           font-body
                           text-sm
                           leading-6
@@ -545,15 +643,21 @@ export default function OpportunitiesPage() {
 
                     {/* Footer */}
 
-                    <div
+                    <Link
+                      to={`/opportunities/${opportunity.id}`}
                       className="
                         mt-5
-                        flex
-                        flex-col
-                        gap-3
+                        block
                         border-t
                         border-[#E9E6EC]
                         pt-4
+                      "
+                    >
+                    <div
+                      className="
+                        flex
+                        flex-col
+                        gap-3
                         sm:flex-row
                         sm:items-center
                         sm:justify-between
@@ -643,10 +747,10 @@ export default function OpportunitiesPage() {
                       </div>
 
                     </div>
+                    </Link>
 
                   </div>
-                </Card>
-              </Link>
+              </Card>
             );
           })}
 

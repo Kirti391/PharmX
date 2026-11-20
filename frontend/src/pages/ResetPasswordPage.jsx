@@ -43,7 +43,20 @@ export default function ResetPasswordPage() {
             </div>
             <div>
               <Label className="text-white/80">New password</Label>
-              <Input type="password" required minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <Input
+                type="password"
+                required
+                minLength={8}
+                maxLength={72}
+                pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])[!-~]{8,72}"
+                title="Use 8–72 characters with uppercase and lowercase letters, a number, and a special character."
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-white/60">
+                8–72 characters; include uppercase and lowercase letters, a number, and a special character.
+              </p>
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <Button type="submit" className="w-full" loading={loading}>

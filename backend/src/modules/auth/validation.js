@@ -1,10 +1,19 @@
 const { z } = require("zod");
 const { PUBLIC_ROLES } = require("../../common/constants");
 
+const PASSWORD_REQUIREMENTS =
+  "Password must be 8–72 characters and include an uppercase letter, a lowercase letter, a number, and a special character";
+const passwordSchema = z
+  .string()
+  .regex(
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])[\x21-\x7E]{8,72}$/,
+    PASSWORD_REQUIREMENTS
+  );
+
 const signupSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   mobile: z.string().min(7).max(15),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: passwordSchema,
   role: z.enum(PUBLIC_ROLES),
   businessType: z.enum(["STOCKIST", "DISTRIBUTOR", "C_AND_F_AGENT"]).optional(),
   displayName: z.string().min(2),
@@ -23,7 +32,7 @@ const signupSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(1),
 });
 
@@ -32,12 +41,19 @@ const refreshSchema = z.object({
 });
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
 });
 
 const resetPasswordSchema = z.object({
   resetToken: z.string().min(10),
-  newPassword: z.string().min(8),
+  newPassword: passwordSchema,
 });
 
-module.exports = { signupSchema, loginSchema, refreshSchema, forgotPasswordSchema, resetPasswordSchema };
+module.exports = {
+  PASSWORD_REQUIREMENTS,
+  signupSchema,
+  loginSchema,
+  refreshSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+};

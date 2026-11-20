@@ -7,6 +7,7 @@ const DoctorProfile = require("../../models/DoctorProfile");
 const { getDisplayProfile } = require("../profiles/service");
 const { createNotification } = require("../notifications/service");
 const { emitRealtime } = require("../../realtime/bus");
+const { hasCurrentConnectionVerification } = require("./verification");
 
 const router = express.Router();
 
@@ -129,6 +130,23 @@ router.post(
       );
     }
 
+    const requester = await User.findById(requesterUserId).select("_id role");
+    const now = new Date();
+    const [requesterVerified, recipientVerified] = await Promise.all([
+      requester
+        ? hasCurrentConnectionVerification(requester, now)
+        : false,
+      hasCurrentConnectionVerification(recipient, now),
+    ]);
+    if (!requesterVerified || !recipientVerified) {
+      return fail(
+        res,
+        403,
+        "CONNECTION_VERIFICATION_REQUIRED",
+        "Both accounts need current admin-approved identity, license, or registration documents to connect."
+      );
+    }
+
     if (recipientRole === "DOCTOR") {
       const doctor = await DoctorProfile.findOne({
         userId: recipient._id,
@@ -156,16 +174,41 @@ router.post(
     }
 
     const existing = await Connection.findOne({
-      requesterId: req.user.sub,
-      recipientId,
+      $or: [
+        { requesterId: req.user.sub, recipientId },
+        { requesterId: recipientId, recipientId: req.user.sub },
+      ],
     });
-
-    if (existing) {
+    const existingIsSameDirection =
+      existing &&
+      existing.requesterId.toString() === String(req.user.sub);
+    if (
+      existing &&
+      (existing.status !== "DECLINED" || existingIsSameDirection)
+    ) {
+      const alreadyConnected = existing.status === "ACCEPTED";
+      const incomingRequest =
+        existing.status === "PENDING" && !existingIsSameDirection;
+      const declinedSameDirection =
+        existing.status === "DECLINED" && existingIsSameDirection;
+      let errorCode = "ALREADY_EXISTS";
+      let errorMessage = "A connection request already exists";
+      if (alreadyConnected) {
+        errorCode = "ALREADY_CONNECTED";
+        errorMessage = "You are already connected with this account";
+      } else if (incomingRequest) {
+        errorCode = "CONNECTION_REQUEST_RECEIVED";
+        errorMessage =
+          "This account already sent you a request; respond from Connections";
+      } else if (declinedSameDirection) {
+        errorCode = "CONNECTION_REQUEST_DECLINED";
+        errorMessage = "Your previous connection request was declined";
+      }
       return fail(
         res,
         409,
-        "ALREADY_EXISTS",
-        "A connection request already exists"
+        errorCode,
+        errorMessage
       );
     }
 
@@ -253,6 +296,30 @@ function respond(status) {
         "ALREADY_RESOLVED",
         "This request was already resolved"
       );
+    }
+
+    if (status === "ACCEPTED") {
+      const [requester, recipient] = await Promise.all([
+        User.findById(row.requesterId).select("_id role status"),
+        User.findById(row.recipientId).select("_id role status"),
+      ]);
+      const now = new Date();
+      const [requesterVerified, recipientVerified] = await Promise.all([
+        requester?.status === "ACTIVE"
+          ? hasCurrentConnectionVerification(requester, now)
+          : false,
+        recipient?.status === "ACTIVE"
+          ? hasCurrentConnectionVerification(recipient, now)
+          : false,
+      ]);
+      if (!requesterVerified || !recipientVerified) {
+        return fail(
+          res,
+          403,
+          "CONNECTION_VERIFICATION_REQUIRED",
+          "Both accounts need current admin-approved identity, license, or registration documents to connect."
+        );
+      }
     }
 
     row.status = status;

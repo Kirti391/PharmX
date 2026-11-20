@@ -19,7 +19,7 @@ const Message = require("../models/Message");
 const VerificationDocument = require("../models/VerificationDocument");
 const CompanyAuthorization = require("../models/CompanyAuthorization");
 
-const DEMO_PASSWORD = "PharmXDemo!2026";
+const DEMO_PASSWORD = "PharmUnisDemo!2026";
 const DEMO_EXPIRY = new Date("2030-12-31T00:00:00.000Z");
 const REGIONS = [
   { city: "Karnal", state: "Haryana" },
@@ -512,7 +512,7 @@ async function seedDemoData() {
     }
 
     for (const { conversation, firstUser, secondUser } of conversations) {
-      const body = "Hello! This is a fictional PharmX demo conversation for testing.";
+      const body = "Hello! This is a fictional PharmUnis demo conversation for testing.";
       const message = await upsert(
         Message,
         { conversationId: conversation._id, senderId: firstUser._id, body },

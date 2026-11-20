@@ -49,7 +49,7 @@ async function run() {
   }
 
   await mongoose.connect(env.mongoUri);
-  console.log("Connected. Seeding PharmX demo data...");
+  console.log("Connected. Seeding PharmUnis demo data...");
 
   // --- Admin ---
   const adminUser = await upsertUser("admin@pharmx.dev", "9990000001", "ADMIN");

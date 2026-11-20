@@ -14,7 +14,11 @@ import {
   Input,
   Loader,
 } from "../components/ui";
-import { DiscoverTabs, ConnectButton } from "../components/discovery";
+import {
+  DiscoverTabs,
+  ConnectButton,
+  DiscoveryAvatar,
+} from "../components/discovery";
 import { useAuthStore } from "../store/authStore";
 
 const COLORS = {
@@ -376,15 +380,16 @@ export default function DiscoverPharmaciesPage() {
                   <div className="flex flex-col gap-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 gap-3">
-                        <div
+                        <DiscoveryAvatar
+                          src={pharmacy.profileImage || pharmacy.logo}
+                          initials={getInitials(name)}
+                          fit="contain"
                           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
                           style={{
                             backgroundColor: `${COLORS.purple}12`,
                             color: COLORS.purple,
                           }}
-                        >
-                          {getInitials(name)}
-                        </div>
+                        />
 
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -395,7 +400,7 @@ export default function DiscoverPharmaciesPage() {
                               {name}
                             </h3>
 
-                            {pharmacy.businessVerified && (
+                            {pharmacy.connectionEligible ? (
                               <span
                                 className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                                 style={{
@@ -404,6 +409,10 @@ export default function DiscoverPharmaciesPage() {
                                 }}
                               >
                                 Verified
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-[#F0EDF1] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#8C8496]">
+                                Verification required
                               </span>
                             )}
                           </div>
@@ -424,6 +433,10 @@ export default function DiscoverPharmaciesPage() {
                       {!isSelf && pharmacy.userId && (
                         <ConnectButton
                           recipientUserId={pharmacy.userId}
+                          recipientRole="PHARMACY"
+                          recipientVerified={pharmacy.connectionEligible}
+                          requesterVerified={pharmacy.requesterConnectionEligible}
+                          connectionStatus={pharmacy.connectionStatus}
                         />
                       )}
                     </div>

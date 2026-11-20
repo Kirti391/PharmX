@@ -13,6 +13,7 @@ const VerificationDocument = require("../../models/VerificationDocument");
 const { recordAudit } = require("../../common/audit");
 const { createNotification } = require("../notifications/service");
 const { getDisplayProfile } = require("../profiles/service");
+const { hasCurrentCompanyRegistration } = require("./verification");
 
 const router = express.Router();
 router.use(requireAuth);
@@ -24,17 +25,6 @@ const requestSchema = z.object({
   territories: z.array(z.string().trim().min(1).max(120)).min(1).max(100),
   expiresAt: z.string().datetime(),
 });
-
-async function hasCurrentCompanyRegistration(company) {
-  return Boolean(
-    await VerificationDocument.exists({
-      userId: company.userId,
-      docType: "BUSINESS_REG",
-      status: "APPROVED",
-      $or: [{ expiryDate: null }, { expiryDate: { $gt: new Date() } }],
-    })
-  );
-}
 
 async function serialize(row) {
   const [company, mr] = await Promise.all([
@@ -59,7 +49,8 @@ async function serialize(row) {
     categories: row.categories,
     territories: row.territories,
     status:
-      row.status === "ACTIVE" && row.expiresAt <= new Date()
+      ["PENDING", "ACTIVE"].includes(row.status) &&
+      row.expiresAt <= new Date()
         ? "EXPIRED"
         : row.status,
     expiresAt: row.expiresAt,
@@ -121,6 +112,16 @@ router.post(
         "Authorization expiry must be in the future"
       );
     }
+
+    await CompanyAuthorization.updateMany(
+      {
+        companyId: parsed.data.companyId,
+        mrUserId: req.user.sub,
+        status: { $in: ["PENDING", "ACTIVE"] },
+        expiresAt: { $lte: new Date() },
+      },
+      { $set: { status: "EXPIRED" } }
+    );
 
     const [company, mr, authorizationDocument] = await Promise.all([
       PharmaCompanyProfile.findOne({
@@ -197,15 +198,32 @@ router.post(
       );
     }
 
-    const authorization = await CompanyAuthorization.create({
-      companyId: company._id,
-      mrUserId: mr._id,
-      requestedBy: mr._id,
-      verificationDocumentId: authorizationDocument._id,
-      categories: [...new Set(parsed.data.categories)],
-      territories: [...new Set(parsed.data.territories)],
-      expiresAt,
-    });
+    let authorization;
+    try {
+      authorization = await CompanyAuthorization.create({
+        companyId: company._id,
+        mrUserId: mr._id,
+        requestedBy: mr._id,
+        verificationDocumentId: authorizationDocument._id,
+        categories: [...new Set(parsed.data.categories)],
+        territories: [...new Set(parsed.data.territories)],
+        expiresAt,
+      });
+    } catch (error) {
+      if (
+        error?.code === 11000 &&
+        ((error.keyPattern?.companyId && error.keyPattern?.mrUserId) ||
+          error.message?.includes("uniq_current_company_authorization_per_mr"))
+      ) {
+        return fail(
+          res,
+          409,
+          "AUTHORIZATION_ALREADY_EXISTS",
+          "An active or pending authorization already exists for this MR"
+        );
+      }
+      throw error;
+    }
     await recordAudit({
       userId: req.user.sub,
       action: "MR_AUTHORIZATION_REQUESTED",
@@ -282,24 +300,46 @@ router.patch(
       );
     }
 
-    authorization.status = "ACTIVE";
-    authorization.reviewedBy = req.user.sub;
-    authorization.reviewedAt = new Date();
-    await authorization.save();
+    const reviewedAt = new Date();
+    const activatedAuthorization =
+      await CompanyAuthorization.findOneAndUpdate(
+        {
+          _id: authorization._id,
+          companyId: company._id,
+          status: "PENDING",
+          expiresAt: { $gt: reviewedAt },
+        },
+        {
+          $set: {
+            status: "ACTIVE",
+            reviewedBy: req.user.sub,
+            reviewedAt,
+          },
+        },
+        { new: true }
+      );
+    if (!activatedAuthorization) {
+      return fail(
+        res,
+        409,
+        "AUTHORIZATION_NOT_REVIEWABLE",
+        "The authorization request was already reviewed or has expired"
+      );
+    }
     await recordAudit({
       userId: req.user.sub,
       action: "COMPANY_AUTHORIZATION_APPROVED",
       targetType: "CompanyAuthorization",
-      targetId: authorization._id.toString(),
+      targetId: activatedAuthorization._id.toString(),
     });
     await createNotification({
       userId: authorization.mrUserId,
       type: "VERIFICATION_UPDATE",
       title: "Company authorization approved",
       body: `${company.companyName} approved your company representation request.`,
-      data: { authorizationId: authorization._id },
+      data: { authorizationId: activatedAuthorization._id },
     });
-    ok(res, await serialize(authorization));
+    ok(res, await serialize(activatedAuthorization));
   })
 );
 
@@ -376,25 +416,32 @@ router.patch(
     if (!company) {
       return fail(res, 404, "NOT_FOUND", "Company profile not found");
     }
-    const authorization = await CompanyAuthorization.findOne({
-      _id: req.params.id,
-      companyId: company._id,
-      status: "ACTIVE",
-    });
+    const revokedAt = new Date();
+    const authorization = await CompanyAuthorization.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        companyId: company._id,
+        status: "ACTIVE",
+        expiresAt: { $gt: revokedAt },
+      },
+      {
+        $set: {
+          status: "REVOKED",
+          revokedAt,
+          reviewedBy: req.user.sub,
+          reviewedAt: revokedAt,
+        },
+      },
+      { new: true }
+    );
     if (!authorization) {
       return fail(
         res,
         404,
         "NOT_FOUND",
-        "Active company authorization not found"
+        "Current active company authorization not found"
       );
     }
-
-    authorization.status = "REVOKED";
-    authorization.revokedAt = new Date();
-    authorization.reviewedBy = req.user.sub;
-    authorization.reviewedAt = new Date();
-    await authorization.save();
     await recordAudit({
       userId: req.user.sub,
       action: "COMPANY_AUTHORIZATION_REVOKED",

@@ -14,7 +14,11 @@ import {
   Input,
   Loader,
 } from "../components/ui";
-import { DiscoverTabs, ConnectButton } from "../components/discovery";
+import {
+  DiscoverTabs,
+  ConnectButton,
+  DiscoveryAvatar,
+} from "../components/discovery";
 import { useAuthStore } from "../store/authStore";
 
 const COLORS = {
@@ -377,15 +381,16 @@ export default function DiscoverCompaniesPage() {
                     {/* Company header */}
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 gap-3">
-                        <div
+                        <DiscoveryAvatar
+                          src={company.logoUrl}
+                          initials={getInitials(name)}
+                          fit="contain"
                           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
                           style={{
                             backgroundColor: `${COLORS.primary}12`,
                             color: COLORS.primary,
                           }}
-                        >
-                          {getInitials(name)}
-                        </div>
+                        />
 
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -396,7 +401,7 @@ export default function DiscoverCompaniesPage() {
                               {name}
                             </h3>
 
-                            {company.businessVerified && (
+                            {company.connectionEligible ? (
                               <span
                                 className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                                 style={{
@@ -406,6 +411,10 @@ export default function DiscoverCompaniesPage() {
                               >
                                 <CheckCircle2 size={11} />
                                 Verified
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-[#F0EDF1] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#8C8496]">
+                                Verification required
                               </span>
                             )}
                           </div>
@@ -426,6 +435,10 @@ export default function DiscoverCompaniesPage() {
                       {!isSelf && company.userId && (
                         <ConnectButton
                           recipientUserId={company.userId}
+                          recipientRole="PHARMA_COMPANY"
+                          recipientVerified={company.connectionEligible}
+                          requesterVerified={company.requesterConnectionEligible}
+                          connectionStatus={company.connectionStatus}
                         />
                       )}
                     </div>

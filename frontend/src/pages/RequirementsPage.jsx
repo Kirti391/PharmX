@@ -4,19 +4,16 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   CheckCircle2,
-  Clock3,
   FileText,
-  MapPin,
   PackageSearch,
   Plus,
   Search,
   Sparkles,
-  Users,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 
 import { apiErrorMessage, http } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
+import RequirementSummaryCard from "../components/requirements/RequirementSummaryCard";
 import {
   Card,
   ErrorState,
@@ -46,248 +43,26 @@ const TABS = [
   { key: "CLOSED", label: "Closed" },
 ];
 
-const URGENCY_STYLES = {
-  HIGH: {
-    color: COLORS.primary,
-    background: "#FCE8F1",
-    label: "High urgency",
-  },
-  NORMAL: {
-    color: COLORS.purple,
-    background: "#F1ECFA",
-    label: "Normal urgency",
-  },
-  LOW: {
-    color: COLORS.muted,
-    background: "#F2F1F3",
-    label: "Low urgency",
-  },
-};
-
-function formatCreatedAt(value) {
-  if (!value) return "Recently created";
-
-  try {
-    return formatDistanceToNow(new Date(value), {
-      addSuffix: true,
-    });
-  } catch {
-    return "Recently created";
-  }
-}
-
-function normalizeStatus(status) {
-  return String(status || "OPEN").toUpperCase();
-}
-
-function getResponseCount(requirement) {
-  return (
-    requirement.responseCount ??
-    requirement.responsesCount ??
-    (Array.isArray(requirement.responses)
-      ? requirement.responses.length
-      : null)
-  );
-}
-
-function getRequirementLocation(requirement) {
-  if (typeof requirement.location === "string") {
-    return requirement.location;
-  }
-
-  if (requirement.location?.city) {
-    return [
-      requirement.location.city,
-      requirement.location.state,
-    ]
-      .filter(Boolean)
-      .join(", ");
-  }
-
-  return requirement.city || requirement.serviceArea || null;
-}
-
-function getRequirementProducts(requirement) {
-  if (Array.isArray(requirement.products)) {
-    return requirement.products;
-  }
-
-  if (Array.isArray(requirement.molecules)) {
-    return requirement.molecules;
-  }
-
-  return [];
-}
-
-function RequirementCard({ requirement }) {
-  const urgency =
-    URGENCY_STYLES[normalizeStatus(requirement.urgency)] ||
-    URGENCY_STYLES.NORMAL;
-
-  const responseCount = getResponseCount(requirement);
-  const location = getRequirementLocation(requirement);
-  const products = getRequirementProducts(requirement);
-
-  return (
-    <Link
-      to={`/requirements/${requirement.id || requirement._id}`}
-      className="group block h-full"
-    >
-      <Card className="relative h-full overflow-hidden border-[#E9E6EC] bg-white p-0 transition-all duration-300 hover:-translate-y-1 hover:border-[#D83F87]/30 hover:shadow-xl">
-        <div
-          className="absolute left-0 top-0 h-1 w-full origin-left scale-x-0 transition-transform duration-300 group-hover:scale-x-100"
-          style={{ backgroundColor: COLORS.primary }}
-        />
-
-        <div className="p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <span
-              className="rounded-full px-2.5 py-1 font-[Unica_One] text-[9px] uppercase tracking-[0.12em]"
-              style={{
-                backgroundColor: "#F1ECFA",
-                color: COLORS.purple,
-              }}
-            >
-              {requirement.category || "General"}
-            </span>
-
-            <span
-              className="rounded-full px-2.5 py-1 font-[Unica_One] text-[9px] uppercase tracking-[0.1em]"
-              style={{
-                backgroundColor: urgency.background,
-                color: urgency.color,
-              }}
-            >
-              {urgency.label}
-            </span>
-          </div>
-
-          <h3
-            className="mt-4 font-[Cinzel] text-base font-semibold leading-6 transition-colors group-hover:text-[#D83F87]"
-            style={{ color: COLORS.navy }}
-          >
-            {requirement.title || "Untitled Requirement"}
-          </h3>
-
-          <p
-            className="mt-2 line-clamp-2 min-h-[42px] font-[Fauna_One] text-xs leading-5"
-            style={{ color: COLORS.muted }}
-          >
-            {requirement.description ||
-              requirement.additionalInfo ||
-              "No additional details provided."}
-          </p>
-
-          {products.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {products.slice(0, 3).map((product, index) => {
-                const label =
-                  typeof product === "string"
-                    ? product
-                    : product?.name ||
-                      product?.molecule ||
-                      product?.productName;
-
-                if (!label) return null;
-
-                return (
-                  <span
-                    key={`${label}-${index}`}
-                    className="rounded-lg border px-2 py-1 font-[Fauna_One] text-[10px]"
-                    style={{
-                      borderColor: COLORS.border,
-                      color: COLORS.navy,
-                    }}
-                  >
-                    {label}
-                  </span>
-                );
-              })}
-
-              {products.length > 3 && (
-                <span
-                  className="rounded-lg px-2 py-1 font-[Fauna_One] text-[10px]"
-                  style={{
-                    backgroundColor: "#F8F7F9",
-                    color: COLORS.muted,
-                  }}
-                >
-                  +{products.length - 3} more
-                </span>
-              )}
-            </div>
-          )}
-
-          <div
-            className="mt-5 grid gap-3 border-t pt-4 sm:grid-cols-2"
-            style={{ borderColor: COLORS.border }}
-          >
-            {location && (
-              <div className="flex min-w-0 items-center gap-2">
-                <MapPin
-                  size={14}
-                  className="shrink-0"
-                  style={{ color: COLORS.primary }}
-                />
-                <span
-                  className="truncate font-[Fauna_One] text-[10px]"
-                  style={{ color: COLORS.muted }}
-                >
-                  {location}
-                </span>
-              </div>
-            )}
-
-            {responseCount !== null && responseCount !== undefined && (
-              <div className="flex items-center gap-2">
-                <Users
-                  size={14}
-                  className="shrink-0"
-                  style={{ color: COLORS.purple }}
-                />
-                <span
-                  className="font-[Fauna_One] text-[10px]"
-                  style={{ color: COLORS.muted }}
-                >
-                  {responseCount}{" "}
-                  {responseCount === 1 ? "response" : "responses"}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4 flex items-center justify-between">
-            <span
-              className="flex items-center gap-1.5 font-[Fauna_One] text-[10px]"
-              style={{ color: COLORS.muted }}
-            >
-              <Clock3 size={12} />
-              {formatCreatedAt(requirement.createdAt)}
-            </span>
-
-            <div
-              className="flex items-center gap-1 font-[Unica_One] text-[10px] uppercase tracking-[0.1em] transition-all group-hover:gap-2"
-              style={{ color: COLORS.primary }}
-            >
-              View
-              <ArrowRight size={13} />
-            </div>
-          </div>
-        </div>
-      </Card>
-    </Link>
-  );
-}
-
 function EmptyRequirements({ user, activeTab }) {
   const isPharmacy = user?.role === "PHARMACY";
+  const isMR = user?.role === "MR" || user?.role === "INDEPENDENT_MR";
+  const isCompany =
+    user?.role === "PHARMA_COMPANY" || user?.role === "COMPANY";
+  const isDistributor =
+    user?.role === "DISTRIBUTOR_STOCKIST" ||
+    user?.role === "DISTRIBUTOR" ||
+    user?.role === "STOCKIST";
 
-  if (activeTab === "OPEN" && isPharmacy) {
+  if (activeTab === "OPEN" && (isPharmacy || isDistributor)) {
     return (
       <Card className="border-[#E9E6EC] bg-white">
         <EmptyState
           title="No open requirements"
-          subtitle="Create a procurement requirement and start finding the right pharmaceutical partners."
+          subtitle={
+            isDistributor
+              ? "Post medicine or stock needs for pharmaceutical companies and distributors."
+              : "Create a procurement requirement and start finding the right pharmaceutical partners."
+          }
           action={
             <Link to="/requirements/create">
               <Button>
@@ -296,6 +71,48 @@ function EmptyRequirements({ user, activeTab }) {
               </Button>
             </Link>
           }
+        />
+      </Card>
+    );
+  }
+
+  if (isCompany) {
+    return (
+      <Card className="border-[#E9E6EC] bg-white">
+        <EmptyState
+          title={
+            activeTab === "OPEN"
+              ? "No open partner requests"
+              : activeTab === "ALL"
+                ? "No partner requests yet"
+                : `No ${activeTab.toLowerCase()} partner requests`
+          }
+          subtitle="Pharmacy and distributor needs addressed to your company will appear here. For hiring, territory expansion, or distribution openings, create an opportunity."
+          action={
+            ["ALL", "OPEN"].includes(activeTab) ? (
+              <Link to="/opportunities/create">
+                <Button>
+                  <Plus size={16} />
+                  Create an opportunity
+                </Button>
+              </Link>
+            ) : null
+          }
+        />
+      </Card>
+    );
+  }
+
+  if (isMR) {
+    return (
+      <Card className="border-[#E9E6EC] bg-white">
+        <EmptyState
+          title={
+            activeTab === "OPEN"
+              ? "No open pharmacy requests for you"
+              : "No pharmacy requests for you yet"
+          }
+          subtitle="Requests posted by pharmacies for Medical Representatives will appear here."
         />
       </Card>
     );
@@ -313,10 +130,13 @@ function EmptyRequirements({ user, activeTab }) {
 
 export default function RequirementsPage() {
   const user = useAuthStore((state) => state.user);
+  const isPharmacy = user?.role === "PHARMACY";
+  const isCompany =
+    user?.role === "PHARMA_COMPANY" || user?.role === "COMPANY";
 
   const [items, setItems] = useState(null);
   const [activeTab, setActiveTab] = useState(
-    user?.role === "PHARMACY" ? "OPEN" : "ALL"
+    isPharmacy ? "OPEN" : "ALL"
   );
   const [search, setSearch] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -388,7 +208,21 @@ export default function RequirementsPage() {
     });
   }, [items, search]);
 
-  const isPharmacy = user?.role === "PHARMACY";
+  const isMR = user?.role === "MR" || user?.role === "INDEPENDENT_MR";
+  const isDistributor =
+    user?.role === "DISTRIBUTOR_STOCKIST" ||
+    user?.role === "DISTRIBUTOR" ||
+    user?.role === "STOCKIST";
+  const canPostRequirements = isPharmacy || isDistributor;
+  const visibleTabs = isPharmacy
+    ? TABS
+    : isCompany
+      ? TABS.filter((tab) =>
+          ["ALL", "OPEN", "FULFILLED", "CLOSED"].includes(tab.key)
+        )
+      : TABS.filter((tab) =>
+          ["ALL", "OPEN", "CLOSED"].includes(tab.key)
+        );
 
   return (
     <div className="space-y-7 pb-10">
@@ -413,24 +247,41 @@ export default function RequirementsPage() {
                 strokeWidth={1.7}
               />
 
-              <p className="font-[Unica_One] text-[10px] uppercase tracking-[0.2em]" style={{ color: COLORS.primary }}>
-                Procurement Workspace
+              <p className="font-[Philosopher] text-[10px] uppercase tracking-[0.2em]" style={{ color: COLORS.primary }}>
+                {isMR
+                  ? "Pharmacy requests"
+                  : isCompany
+                    ? "Partner requests"
+                    : isDistributor
+                      ? "Distribution Requirements"
+                      : "Procurement workspace"}
               </p>
             </div>
 
             <h1 className="mt-3 font-[Cinzel] text-2xl font-semibold text-navy sm:text-3xl">
-              My Requirements
+              {isMR
+                ? "Pharmacy Requests for You"
+                : isCompany
+                  ? "Requests for Your Company"
+                  : isDistributor
+                    ? "Stock & Distribution Requirements"
+                    : "My Requirements"}
             </h1>
 
             <p className="mt-3 max-w-2xl font-[Fauna_One] text-sm leading-6" style={{ color: "#6E6658" }}>
-              Define what your pharmacy needs, track supplier responses and
-              move the right opportunities toward a business connection.
+              {isMR
+                ? "Review pharmacy needs addressed to Medical Representatives and respond where you can help."
+                : isCompany
+                  ? "Review pharmacy and distributor needs addressed to your company, respond to suitable requests, and track their status. Post hiring, territory expansion, or distribution opportunities separately."
+                  : isDistributor
+                    ? "Post medicine or stock needs for pharmaceutical companies and distributors. Track responses and fulfilment here."
+                    : "Post medicine or stock needs for companies and distributors, or request product information or a pharmacy visit from a Medical Representative. Track responses here."}
             </p>
           </div>
 
-          {isPharmacy && (
+          {canPostRequirements && (
             <Link to="/requirements/create" className="shrink-0">
-              <Button className="w-full border-0 bg-[#D83F87] px-5 py-3 font-[Unica_One] text-xs uppercase tracking-[0.1em] text-white shadow-lg shadow-[#D83F87]/20 hover:bg-[#c93679] sm:w-auto">
+              <Button className="w-full border-0 bg-[#D83F87] px-5 py-3 font-[Philosopher] text-xs uppercase tracking-[0.1em] text-white shadow-lg shadow-[#D83F87]/20 hover:bg-[#c93679] sm:w-auto">
                 <Plus size={17} />
                 New Requirement
               </Button>
@@ -478,7 +329,7 @@ export default function RequirementsPage() {
               >
                 <div className="flex items-start gap-3">
                   <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-[Unica_One] text-[10px]"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-[Philosopher] text-[10px]"
                     style={{
                       backgroundColor: "#FCE8F1",
                       color: COLORS.primary,
@@ -523,7 +374,7 @@ export default function RequirementsPage() {
       >
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {TABS.map((tab) => {
+            {visibleTabs.map((tab) => {
               const active = activeTab === tab.key;
 
               return (
@@ -534,7 +385,7 @@ export default function RequirementsPage() {
                     setLoadError("");
                     setActiveTab(tab.key);
                   }}
-                  className="shrink-0 rounded-xl px-3.5 py-2.5 font-[Unica_One] text-[10px] uppercase tracking-[0.08em] transition-all duration-200"
+                  className="shrink-0 rounded-xl px-3.5 py-2.5 font-[Philosopher] text-[10px] uppercase tracking-[0.08em] transition-all duration-200"
                   style={{
                     backgroundColor: active
                       ? COLORS.primary
@@ -559,7 +410,13 @@ export default function RequirementsPage() {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search requirements..."
+              placeholder={
+                isMR
+                  ? "Search pharmacy requests..."
+                  : isCompany
+                    ? "Search partner requests..."
+                    : "Search requirements..."
+              }
               className="h-11 w-full rounded-xl border bg-[#F8F7F9] pl-10 pr-4 font-[Fauna_One] text-xs outline-none transition focus:border-[#D83F87] focus:ring-2 focus:ring-[#D83F87]/10"
               style={{
                 borderColor: COLORS.border,
@@ -574,14 +431,24 @@ export default function RequirementsPage() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <p
-            className="font-[Unica_One] text-[10px] uppercase tracking-[0.18em]"
+            className="font-[Philosopher] text-[10px] uppercase tracking-[0.18em]"
             style={{ color: COLORS.primary }}
           >
-            {activeTab === "OPEN"
-              ? "Open Procurement"
-              : activeTab === "ALL"
-                ? "All Requirements"
-                : activeTab}
+            {isMR
+              ? activeTab === "OPEN"
+                ? "Open Pharmacy Requests"
+                : activeTab === "ALL"
+                  ? "All Pharmacy Requests"
+                  : `${activeTab} Pharmacy Requests`
+              : isCompany
+                ? activeTab === "ALL"
+                  ? "All Partner Requests"
+                  : `${activeTab} Partner Requests`
+                : activeTab === "OPEN"
+                  ? "Open Procurement"
+                  : activeTab === "ALL"
+                    ? "All Requirements"
+                    : activeTab}
           </p>
 
           <h2
@@ -590,9 +457,17 @@ export default function RequirementsPage() {
           >
             {search
               ? "Search Results"
-              : activeTab === "OPEN"
-                ? "Open Requirements"
-                : "Requirements"}
+              : isMR
+                ? activeTab === "OPEN"
+                  ? "Open Pharmacy Requests"
+                  : "Pharmacy Requests"
+                : isCompany
+                  ? activeTab === "OPEN"
+                    ? "Open Partner Requests"
+                    : "Partner Requests"
+                  : activeTab === "OPEN"
+                    ? "Open Requirements"
+                    : "Requirements"}
           </h2>
 
           {Array.isArray(items) && (
@@ -601,7 +476,13 @@ export default function RequirementsPage() {
               style={{ color: COLORS.muted }}
             >
               {filteredItems.length}{" "}
-              {filteredItems.length === 1 ? "requirement" : "requirements"}
+              {isMR || isCompany
+                ? filteredItems.length === 1
+                  ? "request"
+                  : "requests"
+                : filteredItems.length === 1
+                  ? "requirement"
+                  : "requirements"}
               {search ? " found" : ""}
             </p>
           )}
@@ -610,7 +491,7 @@ export default function RequirementsPage() {
         {isPharmacy && (
           <Link
             to="/requirements/create"
-            className="hidden items-center gap-1 font-[Unica_One] text-[10px] uppercase tracking-[0.1em] sm:flex"
+            className="hidden items-center gap-1 font-[Philosopher] text-[10px] uppercase tracking-[0.1em] sm:flex"
             style={{ color: COLORS.primary }}
           >
             Create requirement
@@ -640,7 +521,7 @@ export default function RequirementsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filteredItems.map((requirement) => (
-            <RequirementCard
+            <RequirementSummaryCard
               key={requirement.id || requirement._id}
               requirement={requirement}
             />
@@ -682,7 +563,7 @@ export default function RequirementsPage() {
             <Link to="/requirements/create" className="shrink-0">
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#D83F87] px-5 py-3 font-[Unica_One] text-xs uppercase tracking-[0.08em] text-white transition hover:bg-[#c93679] sm:w-auto"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#D83F87] px-5 py-3 font-[Philosopher] text-xs uppercase tracking-[0.08em] text-white transition hover:bg-[#c93679] sm:w-auto"
               >
                 <Plus size={16} />
                 Post Requirement

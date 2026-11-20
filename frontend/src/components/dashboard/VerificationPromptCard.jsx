@@ -23,10 +23,67 @@ const STATUS_COPY = {
   },
 };
 
-export function VerificationPromptCard({ status }) {
+export function VerificationPromptCard({ status, role = "PHARMACY" }) {
+  const isMR = role === "MR";
+  const isCompany = role === "PHARMA_COMPANY";
+  const isStockist =
+    role === "STOCKIST" ||
+    role === "DISTRIBUTOR" ||
+    role === "DISTRIBUTOR_STOCKIST";
   const copy =
     STATUS_COPY[String(status || "").toUpperCase()] ||
     STATUS_COPY.NOT_SUBMITTED;
+  const mrCopy = {
+    PENDING: {
+      body: "Your identity document is with our team. Once approved, your MR profile will show as verified.",
+      action: "Track verification",
+    },
+    ACTION_REQUIRED: {
+      body: "Your identity document needs attention before your profile can be verified.",
+      action: "Review documents",
+    },
+    NOT_SUBMITTED: {
+      body: "Submit an identity proof for admin review to display your verified badge and connect with partners.",
+      action: "Verify your identity",
+    },
+  };
+  const stockistCopy = {
+    PENDING: {
+      body: "Your licence and business documents are under review. Verified profiles receive stronger partner trust.",
+      action: "Track verification",
+    },
+    ACTION_REQUIRED: {
+      body: "A licence or business document needs attention before your distribution profile can be verified.",
+      action: "Review documents",
+    },
+    NOT_SUBMITTED: {
+      body: "Submit your licence and business documents to verify your distribution profile and unlock trusted partner features.",
+      action: "Verify your business",
+    },
+  };
+  const promptCopy = isStockist
+    ? stockistCopy[String(status || "").toUpperCase()] || stockistCopy.NOT_SUBMITTED
+    : isMR
+    ? mrCopy[String(status || "").toUpperCase()] || mrCopy.NOT_SUBMITTED
+    : isCompany
+      ? {
+          PENDING: {
+            body: "Your company documents are with our team. Verification unlocks trusted company features.",
+            action: "Track verification",
+          },
+          ACTION_REQUIRED: {
+            body: "A company document needs attention before your profile can be verified.",
+            action: "Review documents",
+          },
+          NOT_SUBMITTED: {
+            body: "Submit your company registration documents to build trust with representatives and professional partners.",
+            action: "Verify your company",
+          },
+        }[String(status || "").toUpperCase()] || {
+          body: "Submit your company registration documents to build trust with representatives and professional partners.",
+          action: "Verify your company",
+        }
+      : copy;
 
   return (
     <section
@@ -48,7 +105,13 @@ export function VerificationPromptCard({ status }) {
             className="mt-1 max-w-[220px] font-editorial text-[18px] font-semibold leading-snug"
             style={{ color: SURFACE.ink }}
           >
-            Complete your pharmacy verification.
+            {isStockist
+              ? "Complete your distributor verification."
+              : isMR
+              ? "Complete your identity verification."
+              : isCompany
+                ? "Complete your company verification."
+                : "Complete your pharmacy verification."}
           </h2>
         </div>
       </div>
@@ -57,15 +120,15 @@ export function VerificationPromptCard({ status }) {
         className="mt-3 font-body text-[11px] leading-6"
         style={{ color: SURFACE.inkSoft }}
       >
-        {copy.body}
+        {promptCopy.body}
       </p>
 
       <Link
-        to="/verification"
+        to={isMR ? "/profile" : "/verification"}
         className="group mt-5 inline-flex items-center gap-2 rounded-xl px-4 py-3 font-nav text-[9px] uppercase tracking-[0.1em] text-white transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_10px_22px_rgba(42,27,61,0.14)]"
         style={{ backgroundColor: SURFACE.purple }}
       >
-        {copy.action}
+        {promptCopy.action}
         <ArrowRight
           size={15}
           strokeWidth={1.8}

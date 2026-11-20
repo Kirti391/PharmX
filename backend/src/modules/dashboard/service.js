@@ -5,10 +5,12 @@ const FollowUp = require("../../models/FollowUp");
 const Lead = require("../../models/Lead");
 const Notification = require("../../models/Notification");
 const Opportunity = require("../../models/Opportunity");
+const OpportunityApplication = require("../../models/OpportunityApplication");
 const Requirement = require("../../models/Requirement");
 const VerificationDocument = require("../../models/VerificationDocument");
 const User = require("../../models/User");
 const { CLOSED_LEAD_STAGES } = require("../../common/constants");
+const { hasCurrentConnectionVerification } = require("../connections/verification");
 
 const {
   getDoctorProfileByUserId,
@@ -26,6 +28,8 @@ function serializeRequirement(requirement) {
   return {
     id: requirement._id,
     category: requirement.category,
+    targetRole: requirement.targetRole,
+    requestType: requirement.requestType ?? null,
     title: requirement.title,
     description: requirement.description,
     urgency: requirement.urgency,
@@ -119,7 +123,7 @@ async function enrichAppointment(
  *
  * This intentionally keeps dashboard aggregation out of
  * PharmacyProfile. Profile data remains profile data, while
- * this service combines data from the different PharmX
+ * this service combines data from the different PharmUnis
  * modules needed by the dashboard.
  */
 async function getPharmacyDashboard(
@@ -230,7 +234,7 @@ async function getPharmacyDashboard(
   /**
    * Determine the overall verification state.
    *
-   * Current PharmX data model supports:
+   * Current PharmUnis data model supports:
    * VERIFIED
    * ACTION_REQUIRED
    * PENDING
@@ -251,6 +255,8 @@ async function getPharmacyDashboard(
       id: pharmacy.id,
       pharmacyName:
         pharmacy.pharmacyName,
+      profileImage:
+        pharmacy.profileImage,
       location:
         pharmacy.location,
       businessVerified:
@@ -349,13 +355,23 @@ function serializeOpportunity(opportunity) {
 }
 
 async function getRoleDashboard(userId, role) {
+  const stockistRole =
+    role === "STOCKIST" ||
+    role === "DISTRIBUTOR" ||
+    role === "DISTRIBUTOR_STOCKIST";
+  const profileRole = stockistRole
+    ? "DISTRIBUTOR_STOCKIST"
+    : role;
+  const requirementRole = stockistRole
+    ? "DISTRIBUTOR_STOCKIST"
+    : role;
   const profileByRole = {
     MR: getMRProfileByUserId,
     PHARMA_COMPANY: getPharmaProfileByUserId,
     DISTRIBUTOR_STOCKIST: getStockistProfileByUserId,
     DOCTOR: getDoctorProfileByUserId,
   };
-  const getProfile = profileByRole[role];
+  const getProfile = profileByRole[profileRole];
 
   if (!getProfile) {
     throw new Error(`Unsupported dashboard role: ${role}`);
@@ -363,6 +379,50 @@ async function getRoleDashboard(userId, role) {
 
   const profile = await getProfile(userId);
   const now = new Date();
+  const stockistVerificationDocuments = stockistRole
+    ? await VerificationDocument.find({
+        userId,
+        docType: "DRUG_LICENSE",
+      }).sort({ createdAt: -1 }).select("status expiryDate")
+    : [];
+  const currentStockistLicence = stockistVerificationDocuments.find(
+    (document) =>
+      document.status === "APPROVED" &&
+      (!document.expiryDate || document.expiryDate > now)
+  );
+  const stockistVerificationStatus = currentStockistLicence
+    ? "VERIFIED"
+    : stockistVerificationDocuments.some((document) => document.status === "PENDING")
+      ? "PENDING"
+      : stockistVerificationDocuments.some((document) => document.status === "REJECTED")
+        ? "REJECTED"
+        : stockistVerificationDocuments.some(
+            (document) =>
+              document.status === "APPROVED" &&
+              document.expiryDate &&
+              document.expiryDate <= now
+          )
+          ? "EXPIRED"
+          : "NOT_SUBMITTED";
+  const verification =
+    role === "MR"
+      ? {
+          identityVerified: await hasCurrentConnectionVerification(
+            { _id: userId, role },
+            now
+          ),
+        }
+      : stockistRole
+        ? {
+            businessVerified:
+              profile.businessVerified === true ||
+              Boolean(currentStockistLicence),
+            status: profile.verificationStatus === "VERIFIED"
+              ? "VERIFIED"
+              : stockistVerificationStatus,
+            licenceExpiryDate: profile.licenceExpiryDate || null,
+          }
+        : {};
   const appointmentFilter = {
     $or: [
       { requesterId: userId },
@@ -385,20 +445,34 @@ async function getRoleDashboard(userId, role) {
   };
   const requirementFilter = {
     status: "OPEN",
-    $or: [
-      { ownerId: role === "PHARMA_COMPANY" ? userId : profile.id },
-      {
-        targetRole:
-          role === "PHARMA_COMPANY" ? "COMPANY" : role,
-      },
-    ],
+    ...(stockistRole
+      ? {
+          $or: [
+            { ownerId: userId },
+            {
+              targetRole: "DISTRIBUTOR_STOCKIST",
+              ownerRole: { $ne: "DISTRIBUTOR_STOCKIST" },
+            },
+          ],
+        }
+      : {
+          $or: [
+            {
+              ownerId: role === "PHARMA_COMPANY" ? userId : profile.id,
+            },
+            {
+              targetRole:
+                role === "PHARMA_COMPANY" ? "COMPANY" : requirementRole,
+            },
+          ],
+        }),
   };
   const opportunityFilter =
     role === "PHARMA_COMPANY"
       ? { companyId: profile.id, status: "OPEN" }
       : role === "MR"
         ? { type: "MR_HIRING", status: "OPEN" }
-        : role === "DISTRIBUTOR_STOCKIST"
+        : stockistRole
           ? { type: "DISTRIBUTION", status: "OPEN" }
           : null;
   const currentCompanyRegistration =
@@ -411,7 +485,7 @@ async function getRoleDashboard(userId, role) {
           })
       : true;
   const currentDistributorLicence =
-    role === "DISTRIBUTOR_STOCKIST" &&
+    stockistRole &&
     profile.licenceExpiryDate &&
     profile.licenceExpiryDate <= now
       ? false
@@ -545,9 +619,24 @@ async function getRoleDashboard(userId, role) {
       : Promise.resolve(0),
   ]);
 
+  const opportunityApplications =
+    role === "MR" && opportunities.length > 0
+      ? await OpportunityApplication.find({
+          applicantUserId: userId,
+          opportunityId: { $in: opportunities.map((opportunity) => opportunity._id) },
+        }).select("opportunityId status")
+      : [];
+  const applicationStatuses = new Map(
+    opportunityApplications.map((application) => [
+      application.opportunityId.toString(),
+      application.status,
+    ])
+  );
+
   return {
     role,
     profile,
+    verification,
     stats: {
       upcomingAppointments,
       pendingAppointments,
@@ -589,7 +678,15 @@ async function getRoleDashboard(userId, role) {
       createdAt: notification.createdAt,
     })),
     requirements: requirements.map(serializeRequirement),
-    opportunities: opportunities.map(serializeOpportunity),
+    opportunities: opportunities.map((opportunity) => ({
+      ...serializeOpportunity(opportunity),
+      ...(role === "MR"
+        ? {
+            applicationStatus:
+              applicationStatuses.get(opportunity._id.toString()) || null,
+          }
+        : {}),
+    })),
   };
 }
 
