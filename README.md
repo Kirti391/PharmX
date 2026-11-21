@@ -1,165 +1,125 @@
-# PharmUnis — Pharma Ecosystem Platform (MERN Stack)
+# PharmX — Pharma Ecosystem Platform
 
+PharmX is a full-stack MERN platform connecting pharmaceutical companies, medical representatives (MRs), pharmacies, stockists/distributors, and doctors. It provides role-specific profiles and dashboards, professional discovery, business opportunities, pharmacy requirements, appointments, messaging, and administrative verification workflows.
 
-A full-stack MERN (MongoDB, Express, React, Node) implementation of the pharma ecosystem platform:
-Pharma Companies ↔ Medical Representatives (MR/Independent) ↔ Stockists/Distributors ↔ Pharmacies,
-connected through discovery, smart matching, appointments with disruption handling, real-time
-messaging, and an admin verification workflow.
+The application uses MongoDB and Mongoose on the backend, and React, Vite, React Router, and Tailwind CSS v4 on the frontend. Accounts are active immediately after signup; this build does not use OTP/SMS verification.
 
-
-This is a MERN rebuild of an earlier SQLite/Next.js version of the same product — same feature set,
-same data model, ported onto MongoDB + Mongoose on the backend and plain React (Vite) + React Router
-on the frontend. **No OTP/SMS verification step** — signup activates the account immediately, since
-OTP delivery would need a real SMS provider anyway (see `backend/src/modules/auth/service.js` for
-where that would plug in later if you want it).
-
-```
-
+```text
 pharmx/
-├── backend/    Express + Mongoose API, Socket.IO
-└── frontend/   React (Vite) + React Router + Tailwind v4
+├── backend/    Express + Mongoose API and Socket.IO
+└── frontend/   React + Vite + React Router + Tailwind CSS v4
 ```
 
+## Quick start
 
----
+### Prerequisites
 
-## 1. Quick start
+- Node.js 18 or newer
+- MongoDB, running locally or available through MongoDB Atlas
 
-Requires Node.js 18+ and a running MongoDB instance (local `mongod`, or point `MONGODB_URI` at a
-MongoDB Atlas cluster — either works with zero code changes).
-
-### Backend
-
+### Start the backend
 
 ```bash
 cd backend
 npm install
-npm run seed     # creates demo accounts + sample requirement/opportunity
-npm run dev       # http://localhost:4000
+npm run seed
+npm run dev
 ```
 
-### Frontend (in a second terminal)
+The API listens on `http://localhost:4000` by default.
+
+### Start the frontend
+
+In another terminal:
 
 ```bash
 cd frontend
 npm install
-npm run dev        # http://localhost:5173
+npm run dev
 ```
 
+Vite serves the frontend at `http://localhost:5173`. The frontend uses `http://localhost:4000/api/v1` as its default API URL. Set `VITE_API_URL` when the API is hosted elsewhere.
 
-Or sign up fresh from the landing page — since there's no OTP step, the account is usable immediately.
-Doctors and distributor/stockist accounts can register through the role selector. Administrator access
-is available at `/admin/login`; admin accounts are provisioned by an existing administrator or the
-development seed and cannot be created through public signup.
+### Environment configuration
 
-Run `npm run seed` again at any time to restore the demo accounts' shared password and add any
-missing sample records. The idempotent development fixtures include products, open requirements
-and opportunities, responses and applications, accepted/pending connections, appointments,
-messages, notifications, an MR lead/follow-up, and a pending verification review. Demo
-verification screens link to a clearly labeled placeholder file, not a real licence or identity
-document. The seed command refuses to run with `NODE_ENV=production`.
+The backend loads environment variables from `backend/.env` using `dotenv`. In development, it defaults to a local `pharmx` database and development JWT secrets. For deployment, configure at least:
 
-For a larger test network, run `npm run seed:demo` from `backend/`. This additive seed creates
-five fictional accounts for each role, complete role profiles, pharmacy requirements, accepted
-connections, doctor appointment requests and confirmed appointments, and messaging conversations.
-It is idempotent and does not delete existing records. All demo accounts use
-`PharmUnisDemo!2026`; their emails follow `demo.<role>.<number>@pharmx.dev` (for example,
-`demo.doctor.01@pharmx.dev`). The seed only runs outside production and only against local
-MongoDB by default. Setting `PHARMX_ALLOW_REMOTE_DEMO_SEED=true` explicitly permits a dedicated
-remote non-production database.
+```dotenv
+NODE_ENV=production
+PORT=4000
+MONGODB_URI=mongodb://...
+JWT_ACCESS_SECRET=<strong-random-secret>
+JWT_REFRESH_SECRET=<different-strong-random-secret>
+CORS_ORIGIN=https://your-frontend.example
+```
 
----
+Optional backend settings include `PUBLIC_URL` for externally accessible upload URLs and `UPLOAD_DIR` for choosing the local upload directory. Never use development JWT secrets in production.
 
+## Demo data
 
-## 2. What's real vs. what's simplified
+`npm run seed` in `backend/` creates or updates the primary demo accounts and sample records. It is idempotent and refuses to run when `NODE_ENV=production`. The demo login password is `Password123!`.
 
-**Fully implemented, same feature set as the original build:**
-- JWT auth (access + rotating refresh tokens), per-role signup, password reset — no OTP step (see above)
-- Role-specific profiles (MR, Pharma Company, Pharmacy, Stockist/Distributor) with edit forms
-- Discovery/search across all four profile types with filters
-- Explainable matching engine (category + territory + availability scoring) for requirements and opportunities
-- Requirements marketplace (pharmacies post, matching fires notifications automatically)
-- Opportunities marketplace (companies post, MRs apply, companies shortlist/accept/reject)
-- Connections (request/accept/decline)
-- Appointments: booking, running-late/emergency/cancel/complete status updates, full reschedule
-  negotiation (propose → auto-suggested alternative slots → other party confirms)
-- Verified company-to-MR authorization scoped by product category, territory, and expiry
-- Role-scoped lead pipelines with audited stage changes and follow-up reminders for companies,
-  MRs, and verified distributors
-- Company-managed, draft/publish product catalogues and discoverable C&F agent profiles; no
-  ordering, inventory, payments, or prescription workflow
-- Consent-based professional appointment requests and communications for verified doctors
-- Real-time chat (Socket.IO), with sender-only message editing and soft deletion visible to both
-  participants, plus real-time notification delivery
-- Admin console: separately throttled admin sign-in; platform overview; role/status user filters,
-  suspend/restore actions; document verification queue; company–MR authorization review; reports
-  and reasoned decisions; filtered audit trail; admin account activity; and in-app notifications
-- File uploads (profile images, verification documents) served locally
+| Role | Demo email |
+|---|---|
+| Admin | `admin@pharmx.dev` |
+| Pharma company | `company1@pharmx.dev` |
+| MR | `mr1@pharmx.dev` |
+| Independent MR | `mr2@pharmx.dev` |
+| Pharmacy | `pharmacy1@pharmx.dev` |
+| Pending-verification pharmacy | `pending.pharmacy@pharmx.dev` |
+| Stockist | `stockist1@pharmx.dev` |
+| Distributor | `distributor1@pharmx.dev` |
+| Doctor | `doctor1@pharmx.dev` |
 
-**Deliberately simplified:**
-- **No OTP verification** (explicit design choice for this build — see above)
-- **File storage**: local disk (`backend/uploads/`) instead of S3/Cloudinary
-- **Categories**: a shared constant list rather than an admin-editable database table
-- **Matching engine**: transparent rule-based scoring, not a learned/AI model
-- **Admin security and operations**: admin sign-in is rate-limited and audited, but TOTP/SMS
-  two-factor authentication, CAPTCHA, trusted-device/session management, granular admin roles,
-  assignment/task workflows, privacy/deletion requests, licence automation, and system
-  configuration are not implemented. Admin activity is limited to operational review and must
-  not be used for commercial prospecting.
+Admin sign-in is at `/admin/login`. Admin accounts are provisioned by an existing administrator or the development seed; public signup does not create administrators.
 
----
+For a larger fictional network, run `npm run seed:demo` from `backend/`. It adds five demo users per supported role, profiles, requirements, connections, doctor appointments, and conversations without deleting existing records. These accounts use `PharmUnisDemo!2026` and email addresses in the form `demo.<role>.<number>@pharmx.dev`, such as `demo.doctor.01@pharmx.dev`. The demo seed only runs outside production and targets local MongoDB by default. To explicitly allow a dedicated remote non-production database, set `PHARMX_ALLOW_REMOTE_DEMO_SEED=true`.
 
-## 3. Design system
+Seeded verification records use an explicitly labeled placeholder file, not a real licence or identity document.
 
-Color palette (as supplied):
+## Features
 
-| Token | Hex | Usage |
-|---|---|---|
-| `navy` | `#112D32` | Backgrounds, sidebar, hero sections |
-| `tealdeep` | `#254E58` | Secondary panels, accents on dark backgrounds |
-| `sage` | `#88BDBC` | Primary actions, links, active states |
-| `taupedark` | `#4F4A41` | Body text, borders |
-| `taupe` | `#6E6658` | Secondary/muted text |
+- **Authentication and accounts:** JWT access tokens with rotating refresh tokens, role-based signup, password reset, and immediate activation without OTP.
+- **Role-specific profiles and dashboards:** Editable MR, pharma company, pharmacy, stockist/distributor, and doctor profiles. Profile image uploads are supported; doctors can manage their professional details, communication preferences, and appointment settings.
+- **Discovery:** Search and filter pharma companies, MRs, pharmacies, stockists/distributors, and doctors.
+- **Requirements and opportunities:** Pharmacies can post requirements; companies can publish opportunities for MRs. Company users can manage their opportunities, including editing, closing, and deleting them. Descriptions are formatted for readable posting and viewing.
+- **Matching and notifications:** Explainable, rule-based matching uses categories, territory, and availability to identify relevant requirements and opportunities and notify suitable users.
+- **Connections:** Users can request, accept, or decline professional connections. Duplicate requests in the same direction are prevented at the database layer.
+- **Appointments:** Booking, rescheduling negotiation, running-late and emergency updates, cancellation, and completion. Doctor communications and appointment requests are consent-based.
+- **Company authorizations:** Company-to-MR authorizations are scoped by product category, territory, and expiry.
+- **Lead management:** Role-scoped lead pipelines with audited stage changes and follow-up reminders for companies, MRs, and verified distributors.
+- **Products and distribution profiles:** Company-managed draft/published product catalogues and discoverable C&F agent profiles. The platform does not provide ordering, inventory, payments, or prescription workflows.
+- **Messaging:** Real-time chat through Socket.IO, sender-only message editing, soft deletion visible to both participants, and real-time notifications.
+- **Administration:** Separately throttled admin sign-in, user status management, document verification, company–MR authorization review, reports and reasoned decisions, audit trail, admin activity, and in-app notifications.
+- **Uploads:** Profile images and verification documents are stored on local disk under `backend/uploads/` by default.
 
-Typography: **Plus Jakarta Sans** for headings/display text, **Inter** for body text — loaded via a
-Google Fonts `<link>` in `frontend/index.html` (not a build-time font import, so the production build
-never depends on reaching Google Fonts at build time).
+## Simplifications and limitations
 
-Iconography: [lucide-react](https://lucide.dev), matching the original design principle of abstract
-network/pharma motifs (pill capsules, building/network icons) rather than literal clinical clip-art.
-The landing page's hero illustration is original inline SVG (a molecule/network motif), not a stock
-photo.
+- There is no OTP/SMS verification; adding it requires an SMS provider.
+- Uploads use local disk storage rather than S3 or Cloudinary. Configure persistent storage and a suitable backup strategy before production use.
+- Product categories come from shared application constants rather than an admin-managed database.
+- Matching is transparent rule-based scoring, not an AI/learned model.
+- Admin sign-in is rate-limited and audited, but this build does not include TOTP/SMS two-factor authentication, CAPTCHA, trusted-device/session management, granular admin roles, privacy/deletion request workflows, automated licence checks, or system configuration.
+- Admin activity is for operational review and must not be used for commercial prospecting.
 
-Tailwind v4 is configured CSS-first via `@theme` in `frontend/src/index.css` — there's no
-`tailwind.config.js` in this version (that's a v3-era file; v4 replaced it with this approach).
+## Design and frontend stack
 
----
+The frontend uses React 19, Vite, React Router, Tailwind CSS v4, and `lucide-react`. Tailwind v4 theme tokens are defined CSS-first in `frontend/src/index.css`; there is no Tailwind v3 configuration file. Typography and brand styling are defined in the frontend HTML and CSS.
 
+## Validation
 
-## 4. How this was verified
+From `frontend/`, run the production build and linter:
 
-MongoDB itself couldn't be provisioned in the sandbox this was built in (no path to MongoDB's
-binaries from that environment — the same category of restriction that affected an earlier
-Prisma/PostgreSQL attempt on a related project). So verification here happened in layers:
+```bash
+npm run build
+npm run lint
+```
 
-1. **Syntax check** — every backend `.js` file passed `node --check`.
-2. **Import/require resolution** — every route, service, and model file was `require()`'d in isolation
-   and loaded without error (catches typo'd paths, missing exports, circular-require issues).
-3. **Full app boot test** — `node src/main.js` was run for real: Express assembled, all 13 route
-   modules mounted, Socket.IO gateway initialized, and it failed at exactly the expected point —
-   `ECONNREFUSED 127.0.0.1:27017` — confirming everything *before* the database connection is correct.
-4. **Frontend production build** — `npm run build` completed with zero errors across all 24 pages;
-   the dev server was also started and each route confirmed to return `200`.
+Backend tests use Node's built-in test runner and are located in `backend/test/`:
 
-**What this means for you:** the code is structurally sound and every request/response shape between
-frontend and backend was manually cross-checked against the actual route handlers — but the actual
-database read/write behavior (does a signup really persist, does matching really score correctly
-against real documents) has not been exercised against a live MongoDB instance. That's the first
-thing to confirm on your machine: `npm run seed`, then log in and click through the core loop (post a
-requirement as `pharmacy1@pharmx.dev`, confirm `mr1@pharmx.dev` gets a live notification). If that
-works, everything downstream almost certainly does too, since it exercises the database, the matching
-engine, and the realtime pipeline all at once.
+```bash
+cd backend
+node --test
+```
 
-
-
-
+Run the application against a live MongoDB instance to validate database persistence, seed data, matching, and realtime workflows end to end.
