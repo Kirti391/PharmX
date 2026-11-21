@@ -1,6 +1,6 @@
-# PharmX — Pharma Ecosystem Platform
+# PharmUnis — Pharma Ecosystem Platform
 
-PharmX is a full-stack MERN platform connecting pharmaceutical companies, medical representatives (MRs), pharmacies, stockists/distributors, and doctors. It provides role-specific profiles and dashboards, professional discovery, business opportunities, pharmacy requirements, appointments, messaging, and administrative verification workflows.
+PharmUnis is a full-stack MERN platform connecting pharmaceutical companies, medical representatives (MRs), pharmacies, stockists/distributors, and doctors. It provides role-specific profiles and dashboards, professional discovery, business opportunities, pharmacy requirements, appointments, messaging, and administrative verification workflows.
 
 The application uses MongoDB and Mongoose on the backend, and React, Vite, React Router, and Tailwind CSS v4 on the frontend. Accounts are active immediately after signup; this build does not use OTP/SMS verification.
 
