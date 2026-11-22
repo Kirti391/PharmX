@@ -12,7 +12,7 @@ const passwordSchema = z
 
 const signupSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
-  mobile: z.string().min(7).max(15),
+  mobile: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number"),
   password: passwordSchema,
   role: z.enum(PUBLIC_ROLES),
   businessType: z.enum(["STOCKIST", "DISTRIBUTOR", "C_AND_F_AGENT"]).optional(),

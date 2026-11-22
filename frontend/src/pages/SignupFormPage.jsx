@@ -274,11 +274,21 @@ export default function SignupFormPage() {
                   type="tel"
                   required
                   autoComplete="tel"
+                  inputMode="numeric"
+                  minLength={10}
+                  maxLength={10}
+                  pattern="[6-9][0-9]{9}"
+                  title="Enter a 10-digit Indian mobile number starting with 6, 7, 8, or 9."
                   value={mobile}
-                  onChange={(e) => setMobile(e.target.value)}
+                  onChange={(e) =>
+                    setMobile(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))
+                  }
                   placeholder="Enter mobile number"
                   className="mt-0.5 h-9 rounded-none border-0 border-b border-[#A4B3B6]/50 bg-transparent px-0 text-sm text-[#2A1B3D] placeholder:text-[#A4B3B6] shadow-none focus:border-[#D83F87] focus:ring-0"
                 />
+                <p className="mt-1 text-[10px] text-[#8C8496]">
+                  Enter 10 digits, starting with 6, 7, 8, or 9.
+                </p>
               </div>
 
               {/* Password */}

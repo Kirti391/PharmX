@@ -29,6 +29,22 @@ describe("authentication validation", () => {
     );
   });
 
+  it("accepts only valid 10-digit Indian mobile numbers", () => {
+    for (const mobile of ["9876543210", "6123456789"]) {
+      assert.equal(signupSchema.safeParse({ ...signup, mobile }).success, true);
+    }
+
+    for (const mobile of [
+      "987654321",
+      "98765432101",
+      "5876543210",
+      "98765abc10",
+      "+919876543210",
+    ]) {
+      assert.equal(signupSchema.safeParse({ ...signup, mobile }).success, false);
+    }
+  });
+
   it("requires uppercase, lowercase, number, and special characters", () => {
     for (const password of [
       "alllowercase1!",

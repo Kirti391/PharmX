@@ -14,7 +14,7 @@ const roles = [
   },
   {
     number: "02",
-    title: "Medical Representative/Executive",
+    title: "Medical Representative",
     description:
       "Build your professional profile, discover relevant opportunities and manage authorized connections.",
     action: "Join as MR",

@@ -89,6 +89,9 @@ api.interceptors.response.use(
     const original = error.config;
 
     const status = error?.response?.status;
+    const isLoginRequest = ["/auth/login", "/auth/admin/login"].some((path) =>
+      original?.url?.includes(path)
+    );
 
     //
     // Only refresh on 401.
@@ -97,6 +100,7 @@ api.interceptors.response.use(
       status === 401 &&
       original &&
       !original._retry &&
+      !isLoginRequest &&
       !original.url?.includes("/auth/refresh")
     ) {
       original._retry = true;
