@@ -180,10 +180,6 @@ router.get(
           company: companiesById.get(row.companyId.toString()),
         }));
 
-      if (mrAuthorizations.length === 0) {
-        return ok(res, []);
-      }
-
       const mr = await MRProfile.findOne({
         userId: req.user.sub,
       });
@@ -216,8 +212,6 @@ router.get(
         ? "acceptsMRRequests"
         : "acceptsCompanyInformation";
     const query = {
-      registrationStatus: "VERIFIED",
-      businessVerified: true,
       communicationModes: { $in: ["VIDEO", "PHYSICAL"] },
       blockedUserIds: { $ne: req.user.sub },
       [acceptsField]: true,
@@ -287,10 +281,10 @@ router.get(
             acceptedCategoryMatches
           );
         });
-        if (req.user.role === "MR" && !authorization) return null;
         return {
           id: profile._id,
           userId: profile.userId,
+          canRequest: req.user.role !== "MR" || Boolean(authorization),
           ...(authorization
             ? {
                 companyId: authorization.company._id,
@@ -317,7 +311,10 @@ router.get(
       })
       .filter(Boolean);
 
-    ok(res, doctorResults);
+    ok(
+      res,
+      await addRequesterConnectionEligibility(doctorResults, req.user.sub)
+    );
   })
 );
 

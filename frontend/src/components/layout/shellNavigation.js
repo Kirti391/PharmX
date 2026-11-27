@@ -211,6 +211,12 @@ const DISTRIBUTOR_NAV = [
 const DOCTOR_NAV = [
   PHARMACY_NAV[0],
   {
+    href: "/connections",
+    label: "Connections",
+    icon: Users,
+    match: ["/connections"],
+  },
+  {
     href: "/appointments",
     label: "Professional requests",
     icon: CalendarClock,

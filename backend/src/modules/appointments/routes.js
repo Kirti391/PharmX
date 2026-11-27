@@ -169,13 +169,7 @@ router.post(
       doctorProfile = await DoctorProfile.findOne({
         userId: recipient._id,
       });
-      if (
-        !doctorProfile ||
-        doctorProfile.registrationStatus !== "VERIFIED" ||
-        !doctorProfile.businessVerified ||
-        (doctorProfile.reVerificationDate &&
-          doctorProfile.reVerificationDate <= new Date())
-      ) {
+      if (!doctorProfile) {
         return fail(
           res,
           403,

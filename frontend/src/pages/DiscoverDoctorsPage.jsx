@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BadgeCheck, CalendarClock, MapPin, Video } from "lucide-react";
+import {
+  BadgeCheck,
+  CalendarClock,
+  MapPin,
+  MessageCircle,
+  Video,
+} from "lucide-react";
 
 import { apiErrorMessage, http } from "../lib/api";
 import { PRODUCT_CATEGORIES } from "../lib/constants";
 import { Card, Input, Loader, Select } from "../components/ui";
-import { DiscoveryAvatar } from "../components/discovery";
+import { ConnectButton, DiscoveryAvatar } from "../components/discovery";
 
 export default function DiscoverDoctorsPage() {
   const [doctors, setDoctors] = useState(null);
@@ -191,11 +197,36 @@ export default function DiscoverDoctorsPage() {
                 )}
 
                 <div className="mt-auto pt-5">
-                  <Link to={`/appointments?${appointmentUrl.toString()}`}>
-                    <span className="flex min-h-10 items-center justify-center rounded-full bg-primary px-4 py-2.5 text-xs font-medium text-white transition hover:bg-[#c93679]">
-                      Request professional appointment
-                    </span>
-                  </Link>
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    {doctor.connectionStatus === "ACCEPTED" ? (
+                      <Link
+                        to={`/messages?with=${encodeURIComponent(doctor.userId)}`}
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#44318D] px-4 py-2.5 text-xs font-medium text-white transition hover:bg-[#382778]"
+                      >
+                        <MessageCircle size={14} />
+                        Message doctor
+                      </Link>
+                    ) : (
+                      <ConnectButton
+                        recipientUserId={doctor.userId}
+                        recipientRole="DOCTOR"
+                        recipientVerified
+                        requesterVerified={doctor.requesterConnectionEligible}
+                        connectionStatus={doctor.connectionStatus}
+                      />
+                    )}
+                  </div>
+                  {doctor.canRequest === false ? (
+                    <p className="rounded-xl bg-[#F7F4F8] px-4 py-3 text-center font-body text-xs leading-5 text-[#6E6658]">
+                      An active company authorization covering this doctor’s category and territory is required to request an appointment.
+                    </p>
+                  ) : (
+                    <Link to={`/appointments?${appointmentUrl.toString()}`}>
+                      <span className="flex min-h-10 items-center justify-center rounded-full bg-primary px-4 py-2.5 text-xs font-medium text-white transition hover:bg-[#c93679]">
+                        Request professional appointment
+                      </span>
+                    </Link>
+                  )}
                 </div>
               </Card>
             );

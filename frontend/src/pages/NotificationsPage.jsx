@@ -188,7 +188,13 @@ function NotificationIcon({ category, isAdmin }) {
   );
 }
 
-function NotificationCard({ notification, onRead, isAdmin }) {
+function NotificationCard({
+  notification,
+  onRead,
+  onRespondToConnection,
+  respondingConnectionId,
+  isAdmin,
+}) {
   const category = getNotificationCategory(notification);
   const isRead = Boolean(notification?.readAt);
   const relatedLabel = getRelatedLabel(notification);
@@ -197,6 +203,11 @@ function NotificationCard({ notification, onRead, isAdmin }) {
   const bodyText = isAdmin ? "#c4bfd0" : "#4F4A41";
   const primaryText = isAdmin ? "#f4f0f8" : COLORS.navy;
   const categoryText = isAdmin ? "#b9a9ff" : COLORS.purple;
+  const connectionId = notification?.data?.connectionId;
+  const isConnectionRequest =
+    !isAdmin &&
+    notification?.title === "New connection request" &&
+    connectionId;
 
   return (
     <Card
@@ -301,6 +312,25 @@ function NotificationCard({ notification, onRead, isAdmin }) {
           )}
         </div>
       </button>
+      {isConnectionRequest && (
+        <div className="mt-4 flex flex-wrap justify-end gap-2 border-t pt-4" style={{ borderColor: COLORS.border }}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onRespondToConnection(notification, "decline")}
+            disabled={respondingConnectionId === String(connectionId)}
+          >
+            Decline
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => onRespondToConnection(notification, "accept")}
+            loading={respondingConnectionId === String(connectionId)}
+          >
+            Accept connection
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }
@@ -310,6 +340,7 @@ export default function NotificationsPage() {
   const [items, setItems] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
   const [readingId, setReadingId] = useState(null);
+  const [respondingConnectionId, setRespondingConnectionId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
@@ -416,6 +447,46 @@ export default function NotificationsPage() {
       );
     } finally {
       setReadingId(null);
+    }
+  }
+
+  async function respondToConnection(notification, action) {
+    const connectionId = notification?.data?.connectionId;
+    if (!connectionId || respondingConnectionId) return;
+
+    setRespondingConnectionId(String(connectionId));
+    setError("");
+    try {
+      await http.patch(`/connections/${connectionId}/${action}`);
+      setItems((previous) =>
+        previous?.map((item) =>
+          item.id === notification.id
+            ? {
+                ...item,
+                title:
+                  action === "accept"
+                    ? "Connection request accepted"
+                    : "Connection request declined",
+                body:
+                  action === "accept"
+                    ? "You are now connected and can message this professional."
+                    : "You declined this connection request.",
+                readAt: new Date().toISOString(),
+              }
+            : item
+        ) ?? null
+      );
+    } catch (err) {
+      setError(
+        apiErrorMessage(
+          err,
+          action === "accept"
+            ? "Unable to accept this connection request."
+            : "Unable to decline this connection request."
+        )
+      );
+    } finally {
+      setRespondingConnectionId(null);
     }
   }
 
@@ -648,6 +719,8 @@ export default function NotificationsPage() {
               key={notification.id}
               notification={notification}
               onRead={markRead}
+              onRespondToConnection={respondToConnection}
+              respondingConnectionId={respondingConnectionId}
               isAdmin={isAdmin}
             />
           ))}

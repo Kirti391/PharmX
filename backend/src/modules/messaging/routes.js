@@ -46,11 +46,18 @@ async function canMessage(userIds) {
       recipientId: { $in: userIds },
       status: { $in: ["CONFIRMED", "RUNNING_LATE", "COMPLETED"] },
     });
+    const acceptedConnection = await Connection.exists({
+      status: "ACCEPTED",
+      $or: [
+        { requesterId: userIds[0], recipientId: userIds[1] },
+        { requesterId: userIds[1], recipientId: userIds[0] },
+      ],
+    });
 
     return (
       Boolean(doctorProfile) &&
       !blocked &&
-      Boolean(acceptedAppointment)
+      (Boolean(acceptedAppointment) || Boolean(acceptedConnection))
     );
   }
 
@@ -85,7 +92,7 @@ async function assertMessagingPermission(userIds) {
       ? "DOCTOR_CONSENT_REQUIRED"
       : "ACCEPTED_CONNECTION_REQUIRED",
     involvesDoctor
-      ? "Doctor messaging is available only after an accepted professional appointment and may be blocked by the doctor"
+      ? "Doctor messaging requires an accepted connection or professional appointment and may be blocked by the doctor"
       : "Messaging requires an accepted connection"
   );
 }

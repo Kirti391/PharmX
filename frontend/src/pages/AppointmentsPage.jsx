@@ -64,7 +64,13 @@ export default function AppointmentsPage() {
     if (["MR", "PHARMA_COMPANY"].includes(user?.role)) {
       http
         .get("/discover/doctors")
-        .then((result) => setDoctors(Array.isArray(result) ? result : []))
+        .then((result) =>
+          setDoctors(
+            Array.isArray(result)
+              ? result.filter((doctor) => doctor.canRequest !== false)
+              : []
+          )
+        )
         .catch((requestError) =>
           setError(
             apiErrorMessage(

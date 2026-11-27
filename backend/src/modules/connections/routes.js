@@ -4,6 +4,7 @@ const { ApiError, created, fail, ok } = require("../../common/http");
 const Connection = require("../../models/Connection");
 const User = require("../../models/User");
 const DoctorProfile = require("../../models/DoctorProfile");
+const Notification = require("../../models/Notification");
 const { getDisplayProfile } = require("../profiles/service");
 const { createNotification } = require("../notifications/service");
 const { emitRealtime } = require("../../realtime/bus");
@@ -165,12 +166,6 @@ router.post(
         );
       }
 
-      return fail(
-        res,
-        403,
-        "DOCTOR_CONNECTION_REQUIRES_APPOINTMENT",
-        "Doctor contact must include a professional purpose and appointment request"
-      );
     }
 
     const existing = await Connection.findOne({
@@ -326,6 +321,22 @@ function respond(status) {
     row.respondedAt = new Date();
 
     await row.save();
+    await Notification.updateMany(
+      { userId: req.user.sub, "data.connectionId": row._id },
+      {
+        $set: {
+          title:
+            status === "ACCEPTED"
+              ? "Connection request accepted"
+              : "Connection request declined",
+          body:
+            status === "ACCEPTED"
+              ? "You are now connected and can message this professional."
+              : "You declined this connection request.",
+          readAt: new Date(),
+        },
+      }
+    );
 
     if (status === "ACCEPTED") {
       const recipientProfile = await getDisplayProfile(

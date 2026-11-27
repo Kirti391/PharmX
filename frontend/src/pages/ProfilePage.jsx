@@ -643,21 +643,6 @@ function DoctorProfileForm() {
       );
   }, [loadRetryCount]);
 
-  useEffect(() => {
-    setDocumentsLoading(true);
-    http
-      .get("/verification/status")
-      .then((documents) => {
-        setVerificationDocuments(Array.isArray(documents) ? documents : []);
-        setDocumentsError("");
-      })
-      .catch((requestError) => {
-        setDocumentsError(
-          apiErrorMessage(requestError, "Unable to load verification documents.")
-        );
-      })
-      .finally(() => setDocumentsLoading(false));
-  }, [documentsRetryCount]);
 
   useEffect(() => {
     http
@@ -674,6 +659,7 @@ function DoctorProfileForm() {
         )
       );
   }, [loadRetryCount]);
+
 
   if (!profile && error) {
     return (
@@ -4117,6 +4103,7 @@ function StockistProfileForm() {
       });
   }, [loadRetryCount]);
 
+
   useEffect(() => {
     setDocumentsLoading(true);
     http
@@ -4132,7 +4119,6 @@ function StockistProfileForm() {
       })
       .finally(() => setDocumentsLoading(false));
   }, [documentsRetryCount]);
-
   if (!profile && error) {
     return (
       <ErrorState
