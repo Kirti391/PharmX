@@ -9,7 +9,10 @@ const OpportunityApplication = require("../../models/OpportunityApplication");
 const Requirement = require("../../models/Requirement");
 const VerificationDocument = require("../../models/VerificationDocument");
 const User = require("../../models/User");
-const { CLOSED_LEAD_STAGES } = require("../../common/constants");
+const {
+  CLOSED_LEAD_STAGES,
+  MR_SUPPORT_REQUEST_TYPES,
+} = require("../../common/constants");
 const { hasCurrentConnectionVerification } = require("../connections/verification");
 
 const {
@@ -463,6 +466,9 @@ async function getRoleDashboard(userId, role) {
             {
               targetRole:
                 role === "PHARMA_COMPANY" ? "COMPANY" : requirementRole,
+              ...(requirementRole === "MR"
+                ? { requestType: { $in: MR_SUPPORT_REQUEST_TYPES } }
+                : {}),
             },
           ],
         }),

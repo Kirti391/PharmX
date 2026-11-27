@@ -18,6 +18,7 @@ const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
 const VerificationDocument = require("../models/VerificationDocument");
 const CompanyAuthorization = require("../models/CompanyAuthorization");
+const { MR_SUPPORT_REQUEST_TYPES } = require("../common/constants");
 
 const DEMO_PASSWORD = "PharmUnisDemo!2026";
 const DEMO_EXPIRY = new Date("2030-12-31T00:00:00.000Z");
@@ -384,11 +385,21 @@ async function seedDemoData() {
     const requirements = [];
     for (let index = 0; index < 5; index += 1) {
       for (const targetRole of ["DISTRIBUTOR_STOCKIST", "MR", "COMPANY"]) {
+        const isMRSupportRequest = targetRole === "MR";
+        const legacyMRTitle = `Demo ${CATEGORIES[index]} mr request`;
+        const title = isMRSupportRequest
+          ? `Demo ${CATEGORIES[index]} professional support request`
+          : `Demo ${CATEGORIES[index]} ${targetRole.toLowerCase().replaceAll("_", " ")} request`;
+        const requestType = isMRSupportRequest
+          ? MR_SUPPORT_REQUEST_TYPES[index % MR_SUPPORT_REQUEST_TYPES.length]
+          : null;
         requirements.push(await upsert(
           Requirement,
           {
             ownerId: profiles.PHARMACY[index]._id,
-            title: `Demo ${CATEGORIES[index]} ${targetRole.toLowerCase().replaceAll("_", " ")} request`,
+            ...(isMRSupportRequest
+              ? { $or: [{ title: legacyMRTitle }, { title }] }
+              : { title }),
           },
           {
             pharmacyId: profiles.PHARMACY[index]._id,
@@ -396,8 +407,11 @@ async function seedDemoData() {
             ownerRole: "PHARMACY",
             targetRole,
             category: CATEGORIES[index],
-            title: `Demo ${CATEGORIES[index]} ${targetRole.toLowerCase().replaceAll("_", " ")} request`,
-            description: `Fictional test requirement from ${ROLE_NAMES.PHARMACY[index]} in ${REGIONS[index].city}. Please respond with relevant professional availability or supply coverage.`,
+            ...(requestType ? { requestType } : {}),
+            title,
+            description: isMRSupportRequest
+              ? `Fictional demo ${requestType.toLowerCase().replaceAll("_", " ")} request from ${ROLE_NAMES.PHARMACY[index]} in ${REGIONS[index].city}. Please provide relevant professional support for ${CATEGORIES[index]}.`
+              : `Fictional test requirement from ${ROLE_NAMES.PHARMACY[index]} in ${REGIONS[index].city}. Please respond with relevant availability or supply coverage.`,
             urgency: index % 2 ? "NORMAL" : "HIGH",
             status: "OPEN",
           }

@@ -87,8 +87,9 @@ function StartWorkspacePanel({ isMR = false, isCompany = false }) {
           className="mt-3 max-w-xl font-body text-[11px] leading-6"
           style={{ color: SURFACE.inkSoft }}
         >
-          Pharmacy requests addressed to Medical Representatives will appear
-          here.
+          Requests with a therapeutic area and support type appear here. Older
+          requests stay hidden until the pharmacy updates them to the current
+          support format.
         </p>
       </div>
     );

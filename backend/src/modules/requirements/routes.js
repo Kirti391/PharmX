@@ -641,6 +641,9 @@ router.get(
     if (context.role !== "DISTRIBUTOR_STOCKIST") {
       visibility.push({
         targetRole: context.role,
+        ...(context.role === "MR"
+          ? { requestType: { $in: MR_SUPPORT_REQUEST_TYPES } }
+          : {}),
       });
     } else {
       visibility.push({

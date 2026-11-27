@@ -23,6 +23,7 @@ const Notification = require("../models/Notification");
 const Lead = require("../models/Lead");
 const FollowUp = require("../models/FollowUp");
 const VerificationDocument = require("../models/VerificationDocument");
+const { MR_SUPPORT_REQUEST_TYPES } = require("../common/constants");
 
 const DEMO_PASSWORD = "Password123!";
 
@@ -306,6 +307,7 @@ async function run() {
       ownerId: pharmacyUser._id,
       ownerRole: "PHARMACY",
       targetRole: "MR",
+      requestType: MR_SUPPORT_REQUEST_TYPES[0],
       category: "Dermatology",
       title: "Seeking a local dermatology representative",
       description:

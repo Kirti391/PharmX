@@ -112,7 +112,7 @@ function EmptyRequirements({ user, activeTab }) {
               ? "No open pharmacy requests for you"
               : "No pharmacy requests for you yet"
           }
-          subtitle="Requests posted by pharmacies for Medical Representatives will appear here."
+          subtitle="Current pharmacy support requests for Medical Representatives appear here. Older requests stay hidden until the pharmacy adds a therapeutic area and support type."
         />
       </Card>
     );

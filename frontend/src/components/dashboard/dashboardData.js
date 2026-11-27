@@ -7,6 +7,7 @@ import {
 } from "date-fns";
 
 import { ACCENTS } from "./dashboardTheme";
+import { getMRSupportRequestLabel } from "../../lib/constants";
 
 /* =========================================================
    PHARMUNIS — DASHBOARD DATA HELPERS
@@ -249,6 +250,8 @@ export function filterRequirements(query, requirements = []) {
       item?.title,
       item?.description,
       item?.category,
+      item?.requestType,
+      getMRSupportRequestLabel(item?.requestType),
       item?.urgency,
       item?.status,
     ])
